@@ -1,0 +1,10 @@
+### COMMAND: /workspaces/scripts/with-node24.sh npm run type-check
+### CWD: /workspaces/frontend
+### DATE: 2026-07-16T04:04:10Z
+----------------------------------------------------------------
+
+> frontend@0.0.0 type-check
+> tsc --noEmit --incremental
+
+----------------------------------------------------------------
+### EXIT: 0

@@ -1,0 +1,1 @@
+export PATH="/vercel/share/v0-project/.tools/node24/bin:$PATH"

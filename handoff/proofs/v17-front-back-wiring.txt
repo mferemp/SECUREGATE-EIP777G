@@ -1,0 +1,28 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-front-back-wiring.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:20Z
+----------------------------------------------------------------
+PASS App imports from ./lib/uiLabels and uses UI_PROGRESS_LABELS
+PASS App imports from ./lib/deviceBreadcrumb and uses pingDevice
+PASS App imports from ./lib/passkeyAccess and uses verifyPasskey
+PASS App imports from ./lib/adminPasskey and uses generateAdminPasskeyRemote
+PASS App imports from ./lib/twoFactorProactive and uses twoFactorStatus
+PASS App imports from ./lib/k3Enforcement and uses enforceK3
+PASS App imports from ./lib/recoveryCleanupSweep and uses isBackendSafe
+PASS App imports from ./lib/k3ExecutionSweep and uses sweepTargetsOnlyK3
+PASS App imports from ./lib/thankYouEnvelope and uses thankYouIsNotK3
+PASS App broadcast() fails closed on key-bearing payloads (isBackendSafe guard)
+PASS App execute path enforces K3 before broadcasting
+PASS backend route exists: /api/trace
+PASS backend route exists: /api/passkeys
+PASS backend route exists: /api/admin-passkey
+PASS backend route exists: /api/funding
+PASS backend route exists: /api/deploy
+PASS backend route exists: /api/anti-abuse
+PASS backend route exists: /api/thank-you
+PASS backend route exists: /api/chains
+PASS backend route exists: /api/rpc
+
+verify-front-back-wiring: 20 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

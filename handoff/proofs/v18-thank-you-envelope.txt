@@ -1,0 +1,13 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-thank-you-envelope.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:20Z
+----------------------------------------------------------------
+PASS thankYouIsNotK3 blocks a thank-you address equal to K3
+PASS thank-you config exposes copyAddress as copy-only (no destination role)
+PASS App uses thankYouIsNotK3 guard before copying the tip address
+PASS thank-you address is NOT wired into any deploy/proof/execution body
+PASS backend thank-you route is honest-capability (disabled unless configured)
+
+verify-thank-you-envelope: 5 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

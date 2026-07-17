@@ -1,0 +1,15 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-recovery-flow-ui.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:17Z
+----------------------------------------------------------------
+PASS recovery form exposes burner deployer key + compromised K1 key fields
+PASS deployer + K1 keys are scrubbed immediately after signing
+PASS K2/K3 are PUBLIC address fields — no K2/K3 private-key fields
+PASS chain dropdown shows chain NAMES only (no rpc URL rendered)
+PASS no public frontend RPC URLs anywhere in App
+PASS funding estimate goes through the backend funding route
+PASS no fake estimate / no production-ready label
+
+verify-recovery-flow-ui: 7 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

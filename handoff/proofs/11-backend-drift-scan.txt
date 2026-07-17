@@ -1,0 +1,11 @@
+### COMMAND: /workspaces/scripts/with-node24.sh npm run drift:scan
+### CWD: /workspaces/backend
+### DATE: 2026-07-16T04:04:16Z
+----------------------------------------------------------------
+
+> drift:scan
+> node scripts/drift-scan.cjs
+
+drift:scan: clean (101 source files scanned)
+----------------------------------------------------------------
+### EXIT: 0
