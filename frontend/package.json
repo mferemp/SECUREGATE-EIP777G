@@ -8,10 +8,8 @@
   },
   "scripts": {
     "dev": "node scripts/check-env.cjs vite",
-    "build": "node scripts/check-env.cjs npm run build:client && npm run build:server",
+    "build": "vite build --outDir dist",
     "postbuild": "node scripts/apply-security-headers.cjs",
-    "build:client": "vite build --outDir dist/client",
-    "build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "lint": "eslint .",
     "preview": "vite preview",
     "type-check": "tsc --noEmit --incremental"
@@ -46,7 +44,6 @@
     "@radix-ui/react-toggle": "1.1.10",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
-    "@surf-ai/theme": "latest",
     "@tanstack/query-core": "5.94.5",
     "@tanstack/react-query": "5.94.5",
     "class-variance-authority": "0.7.1",
