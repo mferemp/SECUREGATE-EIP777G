@@ -1,0 +1,13 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-contract-obfuscation-layers.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:21Z
+----------------------------------------------------------------
+PASS canonical Foundry artifact exists and carries real bytecode
+PASS no fabricated / placeholder obfuscated artifact is committed
+PASS source honestly documents the missing layer (no false completeness claim)
+SKIPPED: no obfuscated build configured
+NOTE: Contract/dashboard obfuscation is NOT complete.
+
+verify-contract-obfuscation-layers: 3 passed, 0 failed (obfuscation build SKIPPED)
+----------------------------------------------------------------
+### EXIT: 0

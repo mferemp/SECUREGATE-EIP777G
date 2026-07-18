@@ -1,0 +1,18 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-authgate-session.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:16Z
+----------------------------------------------------------------
+PASS S04: fresh session is unbound with no K1 (fresh-per-use)
+PASS S04: a gate must be blocked until a valid K1 is entered
+PASS S04: binding K1 makes it session-bound and auto-fills downstream
+PASS S04: a different K1 cannot silently overwrite a bound session
+PASS S04: resetSession restores a clean unbound session (fresh-per-use)
+PASS S05: SCAN is a same-device sweep that never verifies/unlocks
+PASS S05: LINK DEVICE is a usb-linked-device sweep that never verifies/unlocks
+PASS S06: 3 failed device attempts darken SCAN+LINK for that K1
+PASS S06: passkey + human routes stay OPEN after device lockout
+PASS S06: a success clears failures; a new K1 resets the counter (per-K1)
+
+verify-authgate-session: 10 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0
