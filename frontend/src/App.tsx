@@ -149,7 +149,7 @@ function formatUptime(uptimeSec: number) {
 export default function App() {
   const [chains, setChains] = useState<Chain[]>([])
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null)
-  const [runtimeError, setRuntimeError] = useState('')
+  const [runtimePhase, setRuntimePhase] = useState<'loading' | 'ready' | 'error'>('loading')
   const [selectedChain, setSelectedChain] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('recovery')
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -242,11 +242,11 @@ export default function App() {
           node24: Boolean(d?.node24),
           uptimeSec: typeof d?.uptimeSec === 'number' ? d.uptimeSec : 0,
         })
-        setRuntimeError('')
+        setRuntimePhase('ready')
       })
       .catch(() => {
         setRuntime(null)
-        setRuntimeError('Runtime telemetry unavailable.')
+        setRuntimePhase('error')
       })
     fetch(api('thank-you/config'))
       .then((r) => r.json())
@@ -969,8 +969,8 @@ export default function App() {
           <section className="sg-overview-grid" aria-label="Operations overview">
             <article className="sg-overview-card">
               <div className="sg-overview-kicker">RUNTIME</div>
-              <strong>{runtime?.node24 ? 'NODE 24 READY' : runtimeError || 'CHECKING RUNTIME'}</strong>
-              <span>{runtime ? `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}` : 'Backend runtime is reported through /api/runtime.'}</span>
+              <strong>{runtimePhase === 'ready' && runtime?.node24 ? 'NODE 24 READY' : runtimePhase === 'error' ? 'RUNTIME TELEMETRY OFFLINE' : 'CHECKING RUNTIME'}</strong>
+              <span>{runtimePhase === 'ready' && runtime ? `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}` : runtimePhase === 'error' ? 'Backend runtime could not be loaded from /api/runtime.' : 'Backend runtime is reported through /api/runtime.'}</span>
             </article>
             <article className="sg-overview-card">
               <div className="sg-overview-kicker">CHAINS</div>
@@ -1356,7 +1356,7 @@ export default function App() {
               rel="noopener noreferrer"
               className="sg-footer-deliverables"
             >
-              Build deliverables ↗
+              Build deliverables — docs, verifier code &amp; ZIPs ↗
             </a>
           )}
         </footer>
