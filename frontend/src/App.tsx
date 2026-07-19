@@ -146,6 +146,18 @@ function formatUptime(uptimeSec: number) {
   return `${Math.floor(uptimeSec / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m`
 }
 
+function getRuntimeTitle(runtimePhase: 'loading' | 'ready' | 'error', runtime: RuntimeStatus | null) {
+  if (runtimePhase === 'ready' && runtime?.node24) return 'NODE 24 READY'
+  if (runtimePhase === 'error') return 'RUNTIME TELEMETRY OFFLINE'
+  return 'CHECKING RUNTIME'
+}
+
+function getRuntimeDescription(runtimePhase: 'loading' | 'ready' | 'error', runtime: RuntimeStatus | null) {
+  if (runtimePhase === 'ready' && runtime) return `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}`
+  if (runtimePhase === 'error') return 'Backend runtime could not be loaded from /api/runtime.'
+  return 'Backend runtime is reported through /api/runtime.'
+}
+
 export default function App() {
   const [chains, setChains] = useState<Chain[]>([])
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null)
@@ -221,16 +233,8 @@ export default function App() {
   const toastId = useRef(0)
   const selectedChainMeta = chains.find((c) => c.slug === selectedChain)
   const deployableChains = chains.filter((c) => c.deploySupported)
-  const runtimeTitle = runtimePhase === 'ready' && runtime?.node24
-    ? 'NODE 24 READY'
-    : runtimePhase === 'error'
-      ? 'RUNTIME TELEMETRY OFFLINE'
-      : 'CHECKING RUNTIME'
-  const runtimeDescription = runtimePhase === 'ready' && runtime
-    ? `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}`
-    : runtimePhase === 'error'
-      ? 'Backend runtime could not be loaded from /api/runtime.'
-      : 'Backend runtime is reported through /api/runtime.'
+  const runtimeTitle = getRuntimeTitle(runtimePhase, runtime)
+  const runtimeDescription = getRuntimeDescription(runtimePhase, runtime)
   const chainSummary = chains.length
     ? `${chains.slice(0, 3).map((chain) => chain.name).join(' · ')}${chains.length > 3 ? ` · +${chains.length - 3} more` : ''}`
     : 'SecureGate is loading /api/chains.'
