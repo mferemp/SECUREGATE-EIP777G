@@ -19,16 +19,11 @@ jobs:
           git fetch origin 'refs/heads/v0/mferempress-5b722644:refs/remotes/origin/v0/mferempress-5b722644'
           git show origin/v0/mferempress-5b722644:dapink-source/frontend/src/App.tsx > frontend/src/App.tsx
 
-      - name: Apply thank-you gate (authVerified) and commit
+      - name: Commit DAPINK App.tsx to main
         run: |
           git config user.email "action@github.com"
           git config user.name "GitHub Actions"
           git add frontend/src/App.tsx
           git diff --cached --stat
-          git commit -m "fix: replace App.tsx with DAPINK locked screen version
-
-Restores STANDALONE OPERATION + CAUTION locked canvas.
-DASHBOARD tabs only show after Auth-Gate unlock.
-No backend/contracts/K1-K2-K3 changes.
-No production-ready claim."
+          git commit -m "fix: replace App.tsx with DAPINK locked screen version"
           git push origin main
