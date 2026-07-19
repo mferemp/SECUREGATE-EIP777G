@@ -91,11 +91,12 @@ const inputStyle: React.CSSProperties = {
 
 const label: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }
 
-function Btn(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'cyan' | 'gold' | 'plain' }) {
+function Btn(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'cyan' | 'gold' | 'plain' | 'pink' }) {
   const { tone = 'plain', style, disabled, ...rest } = props
   const tones: Record<string, React.CSSProperties> = {
     cyan: { borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' },
     gold: { borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)' },
+    pink: { borderColor: 'var(--sg-pink)', color: 'var(--sg-pink)' },
     plain: { borderColor: 'var(--border-primary)', color: 'var(--text-primary)' },
   }
   return (
@@ -187,6 +188,11 @@ export default function App() {
   const [thanksStatus, setThanksStatus] = useState('')
 
   const devicesLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
+  // The recovery/protection/admin/status workspace is revealed only AFTER the
+  // Auth-Gate resolves (a verified K1-bound passkey, or the human-fallback
+  // route after repeated device failures). Until then the landing view is the
+  // STANDALONE OPERATION canvas — the tabbed workspace is never the landing.
+  const dashboardUnlocked = humanRoute.trim() !== ''
   const sessionScratch = useRef<Record<string, string>>({})
   const toastId = useRef(0)
   const selectedChainMeta = chains.find((c) => c.slug === selectedChain)
@@ -780,25 +786,12 @@ export default function App() {
       {/* ============================ 42px FIXED TOPBAR ==================== */}
       <header className="sg-topbar">
         <span className="sg-brandmark" />
-        <span className="sg-brand">SecureGate</span>
-        <span className="sg-badge">EIP-777G</span>
+        <span className="sg-wordmark">
+          <span className="sg-brand">SECUREGATE</span>
+          <span className="sg-badge">EIP-777G</span>
+        </span>
 
         <span className="sg-topbar-spacer" />
-
-        <select
-          id="network-select"
-          aria-label="Network"
-          value={selectedChain}
-          onChange={(e) => setSelectedChain(e.target.value)}
-          style={{ ...inputStyle, width: 'auto', padding: '5px 10px', fontSize: 12, boxShadow: 'none' }}
-        >
-          <option value="">Select network</option>
-          {chains.map((c) => (
-            <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
-              {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
-            </option>
-          ))}
-        </select>
 
         {/* Power/status control — honest: the gate stays LOCKED until a real
             verifier is connected. Never reports a fake "armed" state. */}
@@ -807,20 +800,46 @@ export default function App() {
           <span className="txt">GATE&nbsp;LOCKED</span>
         </span>
 
-        <Btn id="scrub-session" tone="gold" onClick={scrub} style={{ padding: '6px 12px' }}>SCRUB</Btn>
+        <button id="scrub-session" type="button" className="sg-scrub-btn" onClick={scrub}>SCRUB</button>
+        <button
+          id="power-button"
+          type="button"
+          className="sg-power-btn"
+          onClick={scrub}
+          title="Power / clear session"
+          aria-label="Power — clears the session"
+        >
+          <span aria-hidden="true">⏻</span>
+        </button>
       </header>
 
       <div className="sg-shell">
         {/* ========================== 264px FIXED SIDEBAR ================== */}
         <aside className="sg-sidebar" aria-label="Auth-Gate">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--accent-primary)', boxShadow: '0 0 12px var(--accent-primary)' }} />
-            <strong style={{ letterSpacing: '0.04em' }}>Auth-Gate</strong>
+          {/* Neon circular SCAN control — same-device Auth-Gate signal */}
+          <div className="sg-scan-wrap">
+            <button
+              id="scan-authenticator"
+              type="button"
+              className="sg-scan-circle"
+              disabled={devicesLocked}
+              onClick={() => deviceAttempt('scan')}
+              aria-label="SCAN — same-device ownership check"
+            >
+              <span className="sg-scan-ring" aria-hidden="true" />
+              <span className="sg-scan-label">SCAN</span>
+            </button>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 0 }}>Verify this device before the gate unlocks.</p>
+
+          <div className="sg-genesis">GENESIS OWNER AUTHENTICATION</div>
+
+          <div className="sg-locked-card" role="status">
+            <strong>DASHBOARD LOCKED</strong>
+            <span>AUTHENTICATION OF K1 GENESIS OWNER REQUIRED</span>
+          </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={label} htmlFor="authgate-k1">K1 compromised wallet address</label>
+            <label style={label} htmlFor="authgate-k1">K1 COMPROMISED WALLET ADDRESS</label>
             <input
               id="authgate-k1"
               value={k1Address}
@@ -833,10 +852,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'grid', gap: 10 }}>
-            <Btn id="scan-authenticator" tone="cyan" disabled={devicesLocked} onClick={() => deviceAttempt('scan')}>
-              SCAN
-            </Btn>
-            <Btn id="link-device" tone="cyan" disabled={devicesLocked} onClick={() => deviceAttempt('link')}>
+            <Btn id="link-device" tone="pink" disabled={devicesLocked} onClick={() => deviceAttempt('link')}>
               LINK DEVICE
             </Btn>
           </div>
@@ -869,10 +885,48 @@ export default function App() {
           <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
             Device attempts: {Math.min(deviceAttempts, MAX_DEVICE_ATTEMPTS)}/{MAX_DEVICE_ATTEMPTS}
           </div>
+
+          {/* AUTH-GATE guidance */}
+          <div className="sg-authgate-note">
+            <div className="sg-authgate-title">AUTH-GATE</div>
+            <p>Same device: press SCAN.</p>
+            <p>Different device: connect by USB first, then press LINK DEVICE.</p>
+            <p>Enter K1 before SCAN, LINK DEVICE, or PASSKEY. K1 binds to this session until you SCRUB.</p>
+            <p>Save this passkey. It is bound to this K1 only. If lost, you must re-run Auth-Gate.</p>
+            <p>
+              Human fallback stays open: reach out to{' '}
+              <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">@hope_ology</a>.
+            </p>
+            <p>SCRUB clears local/session state at any time.</p>
+          </div>
         </aside>
 
         {/* ============================ MAIN ============================== */}
         <main className="sg-main" style={{ display: 'grid', gap: 20 }}>
+          {/* ===================== STANDALONE OPERATION (landing canvas) ===================== */}
+          <section className="sg-standalone" aria-label="Standalone operation">
+            <h1 className="sg-standalone-title">STANDALONE OPERATION</h1>
+            <p>This dashboard executes the authentication flow client-side.</p>
+            <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
+            <p>Cryptographic checks run in your browser.</p>
+            <p>Chain reads use the server-supplied RPC configuration.</p>
+            <p>RPC is not part of the auth gate.</p>
+          </section>
+
+          <section className="sg-caution" role="note" aria-label="Caution">
+            <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
+            <p>PLUS YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I'M JUST A STICK FIGURE.</p>
+          </section>
+
+          {!dashboardUnlocked ? (
+            <p className="sg-gate-hint" aria-live="polite">
+              Complete the Auth-Gate (verified passkey or human fallback) to reveal the recovery workspace.
+            </p>
+          ) : null}
+
+          {/* ===================== RECOVERY WORKSPACE (revealed after Auth-Gate) ===================== */}
+          {dashboardUnlocked ? (
+          <>
           {/* Tab navigation */}
           <nav className="sg-tabs" role="tablist" aria-label="Sections">
             {TABS.map((t) => (
@@ -918,13 +972,21 @@ export default function App() {
                   <input id="k3-address" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={label} htmlFor="selected-network-echo">Network</label>
-                  <input
-                    id="selected-network-echo"
-                    readOnly
-                    value={selectedChainMeta ? `${selectedChainMeta.name} (${selectedChainMeta.nativeSymbol})` : 'Set in the topbar →'}
-                    style={{ ...inputStyle, opacity: 0.8 }}
-                  />
+                  <label style={label} htmlFor="network-select">Network</label>
+                  <select
+                    id="network-select"
+                    aria-label="Network"
+                    value={selectedChain}
+                    onChange={(e) => setSelectedChain(e.target.value)}
+                    style={inputStyle}
+                  >
+                    <option value="">Select network</option>
+                    {chains.map((c) => (
+                      <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
+                        {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1136,6 +1198,9 @@ export default function App() {
           ) : null}
 
           {/* ==================== THANK-YOU ENVELOPE (always visible) ==================== */}
+          </>
+          ) : null}
+
           <section id="thanks-panel" style={{ ...card, display: 'grid', gap: 10, maxWidth: 460 }} aria-label="Thank-you envelope">
             <a id="thanks-handle" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--sg-pink)', fontWeight: 600, textDecoration: 'none' }}>
               {thanksHandle}
@@ -1149,20 +1214,30 @@ export default function App() {
                 <Btn id="thanks-copy-address" tone="gold" onClick={copyThanksAddress}>CLICK COPY ADDRESS</Btn>
               </>
             ) : null}
-            {authVerified && (<><textarea id="thanks-message" maxLength={280} value={thanksMessage} onChange={(e) => setThanksMessage(e.target.value)} placeholder="Optional thank-you note" style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} />
+            <textarea id="thanks-message" maxLength={280} value={thanksMessage} onChange={(e) => setThanksMessage(e.target.value)} placeholder="Optional thank-you note" style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} />
             <Btn id="thanks-send" onClick={sendThanks}>Send thank-you</Btn>
-            <div id="thanks-status" style={{ fontSize: 12, color: 'var(--text-secondary)' }} aria-live="polite">{thanksStatus}</div></>)}
+            <div id="thanks-status" style={{ fontSize: 12, color: 'var(--text-secondary)' }} aria-live="polite">{thanksStatus}</div>
           </section>
         </main>
 
-        {/* ==================== BUILD DELIVERABLES LINK ==================== */}
-        <footer style={{ marginTop: 28, paddingTop: 16, borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
+        {/* ==================== FOOTER IDENTITY ==================== */}
+        <footer className="sg-footer">
+          <div className="sg-footer-thanks">THANK YOU</div>
+          <div className="sg-footer-built">BUILT BY EMP</div>
+          <a
+            className="sg-footer-handle"
+            href="https://x.com/hope_ology"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            @hope_ology
+          </a>
           <a
             id="deliverables-link"
             href={`${import.meta.env.BASE_URL}api/deliverables`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none', letterSpacing: '0.04em' }}
+            className="sg-footer-deliverables"
           >
             Build deliverables — docs, verifier code &amp; ZIPs ↗
           </a>
