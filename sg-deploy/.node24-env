@@ -1,0 +1,1 @@
+export PATH="/tmp/securegate-final/.tools/node24/bin:$PATH"
