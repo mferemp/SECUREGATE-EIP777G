@@ -1226,14 +1226,18 @@ export default function App() {
         <footer className="sg-footer">
           <div className="sg-footer-thanks">THANK YOU</div>
           <div className="sg-footer-built">BUILT BY EMP</div>
-          <a
-            className="sg-footer-handle"
-            href="https://x.com/hope_ology"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            @hope_ology
-          </a>
+          {dashboardUnlocked ? (
+            <a
+              className="sg-footer-handle"
+              href="https://x.com/hope_ology"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @hope_ology
+            </a>
+          ) : (
+            <span className="sg-footer-handle">@hope_ology</span>
+          )}
 {dashboardUnlocked && (
                   <a
             id="deliverables-link"
