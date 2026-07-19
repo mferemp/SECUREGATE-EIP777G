@@ -1201,7 +1201,8 @@ export default function App() {
           </>
           ) : null}
 
-          <section id="thanks-panel" style={{ ...card, display: 'grid', gap: 10, maxWidth: 460 }} aria-label="Thank-you envelope">
+{dashboardUnlocked && (
+                  <section id="thanks-panel" style={{ ...card, display: 'grid', gap: 10, maxWidth: 460 }} aria-label="Thank-you envelope">
             <a id="thanks-handle" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--sg-pink)', fontWeight: 600, textDecoration: 'none' }}>
               {thanksHandle}
             </a>
@@ -1218,6 +1219,7 @@ export default function App() {
             <Btn id="thanks-send" onClick={sendThanks}>Send thank-you</Btn>
             <div id="thanks-status" style={{ fontSize: 12, color: 'var(--text-secondary)' }} aria-live="polite">{thanksStatus}</div></>)}
           </section>
+        )}
         </main>
 
         {/* ==================== FOOTER IDENTITY ==================== */}
@@ -1232,7 +1234,8 @@ export default function App() {
           >
             @hope_ology
           </a>
-          <a
+{dashboardUnlocked && (
+                  <a
             id="deliverables-link"
             href={`${import.meta.env.BASE_URL}api/deliverables`}
             target="_blank"
@@ -1241,6 +1244,7 @@ export default function App() {
           >
             Build deliverables — docs, verifier code &amp; ZIPs ↗
           </a>
+        )}
         </footer>
       </div>
 
