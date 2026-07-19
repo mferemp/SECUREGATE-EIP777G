@@ -140,6 +140,7 @@ const card: React.CSSProperties = {
 }
 
 function formatUptime(uptimeSec: number) {
+  if (uptimeSec <= 0) return 'just started'
   if (uptimeSec < 60) return `${uptimeSec}s`
   if (uptimeSec < 3600) return `${Math.floor(uptimeSec / 60)}m`
   return `${Math.floor(uptimeSec / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m`
@@ -1333,8 +1334,20 @@ export default function App() {
 
         {/* ==================== FOOTER IDENTITY ==================== */}
         <footer className="sg-footer">
-          <div className="sg-footer-thanks">THANK YOU FOR USING SECUREGATE</div>
-          <div className="sg-footer-built">SECUREGATE // EIP-777G // STANDALONE OPERATION</div>
+          <div className="sg-footer-thanks">THANK YOU</div>
+          <div className="sg-footer-built">BUILT BY EMP</div>
+          {dashboardUnlocked ? (
+            <a
+              className="sg-footer-handle"
+              href="https://x.com/hope_ology"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @hope_ology
+            </a>
+          ) : (
+            <span className="sg-footer-handle">@hope_ology</span>
+          )}
           {dashboardUnlocked && (
             <a
               id="deliverables-link"
@@ -1343,7 +1356,7 @@ export default function App() {
               rel="noopener noreferrer"
               className="sg-footer-deliverables"
             >
-              BUILD DELIVERABLES ↗
+              Build deliverables ↗
             </a>
           )}
         </footer>

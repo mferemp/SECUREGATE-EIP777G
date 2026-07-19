@@ -832,6 +832,13 @@
   letter-spacing: 0.14em;
 }
 
+.sg-footer-handle {
+  color: var(--sg-pink);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+}
+
 .sg-footer-deliverables {
   color: var(--sg-gold);
   font-size: 11px;

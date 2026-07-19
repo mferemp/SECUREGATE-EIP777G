@@ -1,1 +1,1 @@
-export PATH="/home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/.tools/node24/bin:$PATH"
+export PATH="/vercel/share/v0-project/.tools/node24/bin:$PATH"
