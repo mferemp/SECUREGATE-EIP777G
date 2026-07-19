@@ -1214,9 +1214,9 @@ export default function App() {
                 <Btn id="thanks-copy-address" tone="gold" onClick={copyThanksAddress}>CLICK COPY ADDRESS</Btn>
               </>
             ) : null}
-            <textarea id="thanks-message" maxLength={280} value={thanksMessage} onChange={(e) => setThanksMessage(e.target.value)} placeholder="Optional thank-you note" style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} />
+            {dashboardUnlocked && (<><textarea id="thanks-message" maxLength={280} value={thanksMessage} onChange={(e) => setThanksMessage(e.target.value)} placeholder="Optional thank-you note" style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} />
             <Btn id="thanks-send" onClick={sendThanks}>Send thank-you</Btn>
-            <div id="thanks-status" style={{ fontSize: 12, color: 'var(--text-secondary)' }} aria-live="polite">{thanksStatus}</div>
+            <div id="thanks-status" style={{ fontSize: 12, color: 'var(--text-secondary)' }} aria-live="polite">{thanksStatus}</div></>)}
           </section>
         </main>
 
