@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-front-back-wiring.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:20Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-front-back-wiring.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS App imports from ./lib/uiLabels and uses UI_PROGRESS_LABELS
 PASS App imports from ./lib/deviceBreadcrumb and uses pingDevice

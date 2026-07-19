@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh npm run selftest
-### CWD: /workspaces/backend
-### DATE: 2026-07-16T04:04:15Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh npm run selftest
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/backend
+### DATE: 2026-07-19T21:37:35Z
 ----------------------------------------------------------------
 
 > selftest

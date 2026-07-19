@@ -1,31 +1,7 @@
-### COMMAND: /workspaces/scripts/with-node24.sh forge build --via-ir
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:10Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh forge build --via-ir
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:33Z
 ----------------------------------------------------------------
-No files changed, compilation skipped
-warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
-    ╭▸ contracts/SecureGate.sol:150:13
-    │
-150 │         if (deadline <= block.timestamp) revert InvalidDeadline();
-    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │
-    ╰ help: https://book.getfoundry.sh/reference/forge/forge-lint#block-timestamp
-
-warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
-    ╭▸ contracts/SecureGate.sol:176:13
-    │
-176 │         if (block.timestamp > intent.deadline) revert InvalidDeadline();
-    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │
-    ╰ help: https://book.getfoundry.sh/reference/forge/forge-lint#block-timestamp
-
-warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
-    ╭▸ contracts/SecureGate.sol:191:13
-    │
-191 │         if (block.timestamp > intent.deadline) revert InvalidDeadline();
-    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │
-    ╰ help: https://book.getfoundry.sh/reference/forge/forge-lint#block-timestamp
-
+/home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh: line 30: exec: forge: not found
 ----------------------------------------------------------------
-### EXIT: 0
+### EXIT: 127

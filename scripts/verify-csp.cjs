@@ -3,7 +3,7 @@
 
 // verify-csp.cjs — proves SecureGate's production CSP / security headers.
 // Checks the canonical policy module, the applier, and (when present) the built
-// dist/client artifacts (_headers + injected meta). It asserts the mandated
+// dist artifacts (_headers + injected meta). It asserts the mandated
 // directives, that there is NO external script CDN and NO public RPC URL in the
 // frontend CSP, and that no QR/operator/revoke drift leaked into the headers.
 //
@@ -16,7 +16,13 @@ const ROOT = path.resolve(__dirname, '..');
 const FRONTEND = path.join(ROOT, 'frontend');
 const MODULE = path.join(FRONTEND, 'security-headers.cjs');
 const APPLIER = path.join(FRONTEND, 'scripts', 'apply-security-headers.cjs');
-const DIST = path.join(FRONTEND, 'dist', 'client');
+function resolveDistDir() {
+  const candidates = [
+    path.join(FRONTEND, 'dist', 'client'),
+    path.join(FRONTEND, 'dist'),
+  ];
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || null;
+}
 
 let passed = 0, failed = 0;
 function pass(m) { passed++; console.log('PASS ' + m); }
@@ -60,18 +66,19 @@ function assert(cond, m, d) { if (cond) pass(m); else fail(m, d); }
     'no operator/revoke/QR drift in header module');
 
   // Built production artifacts, when present, carry the full policy.
-  const headersFile = path.join(DIST, '_headers');
-  const indexFile = path.join(DIST, 'index.html');
-  if (fs.existsSync(headersFile)) {
+  const distDir = resolveDistDir();
+  const headersFile = distDir ? path.join(distDir, '_headers') : null;
+  const indexFile = distDir ? path.join(distDir, 'index.html') : null;
+  if (headersFile && fs.existsSync(headersFile)) {
     const h = fs.readFileSync(headersFile, 'utf8');
     assert(/Content-Security-Policy:.*frame-ancestors 'none'/.test(h), 'built _headers carries frame-ancestors none');
     assert(/Content-Security-Policy:.*object-src 'none'/.test(h), 'built _headers carries object-src none');
     assert(/Content-Security-Policy:.*form-action 'none'/.test(h), 'built _headers carries form-action none');
     assert(!/https?:\/\/[^ ]*rpc|connect-src[^;]*https?:\/\//i.test(h), 'built _headers has no public RPC in connect-src');
   } else {
-    console.log('NOTE: dist/client/_headers not present (run `npm run build` to emit it)');
+    console.log('NOTE: built _headers not present (run `npm run build` to emit it)');
   }
-  if (fs.existsSync(indexFile)) {
+  if (indexFile && fs.existsSync(indexFile)) {
     const idx = fs.readFileSync(indexFile, 'utf8');
     assert(/<meta http-equiv="Content-Security-Policy"/.test(idx), 'built index.html has injected CSP meta');
     // Inline scripts must be covered by sha256 hashes (strict, no unsafe-inline).

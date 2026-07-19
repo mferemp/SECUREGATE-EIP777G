@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-funding-gas.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:17Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-funding-gas.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS funding route exists at GET /api/funding/:chain
 PASS funding estimate uses backend RPC (chains.rpcUrlFor)

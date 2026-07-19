@@ -51,6 +51,20 @@ type Chain = {
   deploySupported: boolean
 }
 
+type RuntimeStatus = {
+  status: string
+  node: string
+  node24: boolean
+  uptimeSec: number
+}
+
+type FundingSnapshot = {
+  chain: string
+  nativeSymbol: string
+  estimateNative: string
+  estGas: string
+}
+
 type Toast = { id: number; kind: 'info' | 'warn' | 'error'; text: string }
 type TabKey = 'recovery' | 'protection' | 'admin' | 'status'
 
@@ -125,8 +139,29 @@ const card: React.CSSProperties = {
   padding: 20,
 }
 
+function formatUptime(uptimeSec: number) {
+  if (uptimeSec <= 0) return 'just started'
+  if (uptimeSec < 60) return `${uptimeSec}s`
+  if (uptimeSec < 3600) return `${Math.floor(uptimeSec / 60)}m`
+  return `${Math.floor(uptimeSec / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m`
+}
+
+function getRuntimeTitle(runtimePhase: 'loading' | 'ready' | 'error', runtime: RuntimeStatus | null) {
+  if (runtimePhase === 'ready' && runtime?.node24) return 'NODE 24 READY'
+  if (runtimePhase === 'error') return 'RUNTIME TELEMETRY OFFLINE'
+  return 'CHECKING RUNTIME'
+}
+
+function getRuntimeDescription(runtimePhase: 'loading' | 'ready' | 'error', runtime: RuntimeStatus | null) {
+  if (runtimePhase === 'ready' && runtime) return `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}`
+  if (runtimePhase === 'error') return 'Backend runtime could not be loaded from /api/runtime.'
+  return 'Backend runtime is reported through /api/runtime.'
+}
+
 export default function App() {
   const [chains, setChains] = useState<Chain[]>([])
+  const [runtime, setRuntime] = useState<RuntimeStatus | null>(null)
+  const [runtimePhase, setRuntimePhase] = useState<'loading' | 'ready' | 'error'>('loading')
   const [selectedChain, setSelectedChain] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('recovery')
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -186,6 +221,7 @@ export default function App() {
   const [thanksHandle, setThanksHandle] = useState('@hope_ology')
   const [thanksMessage, setThanksMessage] = useState('')
   const [thanksStatus, setThanksStatus] = useState('')
+  const [latestFunding, setLatestFunding] = useState<FundingSnapshot | null>(null)
 
   const devicesLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
   // The recovery/protection/admin/status workspace is revealed only AFTER the
@@ -196,6 +232,12 @@ export default function App() {
   const sessionScratch = useRef<Record<string, string>>({})
   const toastId = useRef(0)
   const selectedChainMeta = chains.find((c) => c.slug === selectedChain)
+  const deployableChains = chains.filter((c) => c.deploySupported)
+  const runtimeTitle = getRuntimeTitle(runtimePhase, runtime)
+  const runtimeDescription = getRuntimeDescription(runtimePhase, runtime)
+  const chainSummary = chains.length
+    ? `${chains.slice(0, 3).map((chain) => chain.name).join(' · ')}${chains.length > 3 ? ` · +${chains.length - 3} more` : ''}`
+    : 'SecureGate is loading /api/chains.'
 
   const pushToast = useCallback((kind: Toast['kind'], text: string) => {
     const id = ++toastId.current
@@ -208,6 +250,21 @@ export default function App() {
       .then((r) => r.json())
       .then((d) => setChains(Array.isArray(d?.chains) ? d.chains : []))
       .catch(() => setChains([]))
+    fetch(api('runtime'))
+      .then((r) => r.json())
+      .then((d) => {
+        setRuntime({
+          status: typeof d?.status === 'string' ? d.status : 'error',
+          node: typeof d?.node === 'string' ? d.node : 'unknown',
+          node24: Boolean(d?.node24),
+          uptimeSec: typeof d?.uptimeSec === 'number' ? d.uptimeSec : 0,
+        })
+        setRuntimePhase('ready')
+      })
+      .catch(() => {
+        setRuntime(null)
+        setRuntimePhase('error')
+      })
     fetch(api('thank-you/config'))
       .then((r) => r.json())
       .then((d) => {
@@ -282,9 +339,16 @@ export default function App() {
       const d = await r.json()
       if (!r.ok) throw new Error(d?.error || 'estimate failed')
       setFundingPanel(`Estimated deploy cost: ${d.estimateNative} ${d.nativeSymbol} (gas ${d.estGas})`)
+      setLatestFunding({
+        chain: selectedChain,
+        nativeSymbol: d.nativeSymbol,
+        estimateNative: d.estimateNative,
+        estGas: d.estGas,
+      })
       pushToast('info', 'Funding estimate updated.')
     } catch (e) {
       setFundingPanel('Funding check unavailable: ' + (e as Error).message)
+      setLatestFunding(null)
       pushToast('error', 'Funding check unavailable.')
     }
   }
@@ -747,6 +811,7 @@ export default function App() {
     setAuthVerified(false)
     setK2WalletAddress('')
     setAuthStatus('')
+    setLatestFunding(null)
     sessionScratch.current = {}
     setAuthMsg('Session-only fields cleared.')
     pushToast('info', 'Session-only fields scrubbed.')
@@ -916,6 +981,68 @@ export default function App() {
           <section className="sg-caution" role="note" aria-label="Caution">
             <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
             <p>PLUS YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I'M JUST A STICK FIGURE.</p>
+          </section>
+
+          <section className="sg-overview-grid" aria-label="Operations overview">
+            <article className="sg-overview-card">
+              <div className="sg-overview-kicker">RUNTIME</div>
+              <strong>{runtimeTitle}</strong>
+              <span>{runtimeDescription}</span>
+            </article>
+            <article className="sg-overview-card">
+              <div className="sg-overview-kicker">CHAINS</div>
+              <strong>{chains.length ? `${deployableChains.length}/${chains.length} DEPLOYABLE` : 'LOADING CHAIN REGISTRY'}</strong>
+              <span>{chainSummary}</span>
+            </article>
+            <article className="sg-overview-card">
+              <div className="sg-overview-kicker">FUNDING</div>
+              <strong>{latestFunding ? `${latestFunding.estimateNative} ${latestFunding.nativeSymbol}` : 'NO FUNDING QUOTE YET'}</strong>
+              <span>{latestFunding ? `${latestFunding.chain} deploy estimate at gas ${latestFunding.estGas}.` : 'Pick a network and run Calculate funding to stage a deploy quote.'}</span>
+            </article>
+            <article className="sg-overview-card">
+              <div className="sg-overview-kicker">ACCESS</div>
+              <strong>{dashboardUnlocked ? 'RECOVERY WORKSPACE LIVE' : 'AUTH-GATE LOCKED'}</strong>
+              <span>{dashboardUnlocked ? 'Recovery, protection, admin, and status controls are available.' : 'Complete the Auth-Gate to open the operator workspace.'}</span>
+            </article>
+          </section>
+
+          <section className="sg-chain-board" aria-label="Chain board">
+            <div className="sg-chain-board-head">
+              <div>
+                <div className="sg-overview-kicker">CHAIN BOARD</div>
+                <h2 className="sg-chain-board-title">Deployment lanes</h2>
+              </div>
+              <div className="sg-chain-board-note">Registry powered by /api/chains · estimates by /api/funding</div>
+            </div>
+            <div className="sg-chain-list">
+              {chains.length ? chains.map((chain) => (
+                <div
+                  key={chain.slug}
+                  className={`sg-chain-row${selectedChain === chain.slug ? ' is-active' : ''}`}
+                  onClick={() => setSelectedChain(chain.slug)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedChain(chain.slug)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedChain === chain.slug}
+                >
+                  <div>
+                    <strong>{chain.name}</strong>
+                    <span>{chain.slug} · chain {chain.chainId}</span>
+                  </div>
+                  <div className="sg-chain-meta">
+                    <span>{chain.nativeSymbol}</span>
+                    <span>{chain.deploySupported ? 'DEPLOY READY' : 'VIEW ONLY'}</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="sg-chain-empty">Waiting for chain metadata.</div>
+              )}
+            </div>
           </section>
 
           {!dashboardUnlocked ? (
@@ -1226,25 +1353,29 @@ export default function App() {
         <footer className="sg-footer">
           <div className="sg-footer-thanks">THANK YOU</div>
           <div className="sg-footer-built">BUILT BY EMP</div>
-          <a
-            className="sg-footer-handle"
-            href="https://x.com/hope_ology"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            @hope_ology
-          </a>
-{dashboardUnlocked && (
-                  <a
-            id="deliverables-link"
-            href={`${import.meta.env.BASE_URL}api/deliverables`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="sg-footer-deliverables"
-          >
-            Build deliverables — docs, verifier code &amp; ZIPs ↗
-          </a>
-        )}
+          {dashboardUnlocked ? (
+            <a
+              className="sg-footer-handle"
+              href="https://x.com/hope_ology"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @hope_ology
+            </a>
+          ) : (
+            <span className="sg-footer-handle">@hope_ology</span>
+          )}
+          {dashboardUnlocked && (
+            <a
+              id="deliverables-link"
+              href={`${import.meta.env.BASE_URL}api/deliverables`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sg-footer-deliverables"
+            >
+              Build deliverables — docs, verifier code &amp; ZIPs ↗
+            </a>
+          )}
         </footer>
       </div>
 

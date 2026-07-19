@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node -e const m=Number(process.versions.node.split(".")[0]);if(m!==24){console.error("Wrong Node: "+process.version);process.exit(1)}console.log("Node 24 verified: "+process.version)
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:10Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node -e const m=Number(process.versions.node.split(".")[0]);if(m!==24){console.error("Wrong Node: "+process.version);process.exit(1)}console.log("Node 24 verified: "+process.version)
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:33Z
 ----------------------------------------------------------------
 Node 24 verified: v24.18.0
 ----------------------------------------------------------------

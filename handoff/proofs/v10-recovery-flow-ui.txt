@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-recovery-flow-ui.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:17Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-recovery-flow-ui.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS recovery form exposes burner deployer key + compromised K1 key fields
 PASS deployer + K1 keys are scrubbed immediately after signing

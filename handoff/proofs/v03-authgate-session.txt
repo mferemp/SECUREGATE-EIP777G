@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-authgate-session.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:16Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-authgate-session.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:35Z
 ----------------------------------------------------------------
 PASS S04: fresh session is unbound with no K1 (fresh-per-use)
 PASS S04: a gate must be blocked until a valid K1 is entered

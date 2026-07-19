@@ -1,14 +1,14 @@
 ===== FOUNDRY / NODE 24 =====
 01-node-version                            exit=0
 02-node24-assert                           exit=0
-03-forge-version                           exit=0
-04-forge-build-via-ir                      exit=0
-05-forge-test-vvv                          exit=0
+03-forge-version                           exit=127
+04-forge-build-via-ir                      exit=127
+05-forge-test-vvv                          exit=127
 06-extract-bytecode                        exit=0
 07-verify-abi-canonical                    exit=0
 ===== FRONTEND =====
-08-frontend-type-check                     exit=0
-09-frontend-build                          exit=0
+08-frontend-type-check                     exit=2
+09-frontend-build                          exit=127
 ===== BACKEND =====
 10-backend-selftest                        exit=0
 11-backend-drift-scan                      exit=0
@@ -28,8 +28,8 @@ v11-funding-gas                            exit=0
 v12-recovery-cleanup-sweep                 exit=0
 v13-blacklist-k3                           exit=0
 v14-k3-execution-sweep                     exit=0
-v15-k2-intent-builders                     exit=0
-v16-wallet-k2-flow                         exit=0
+v15-k2-intent-builders                     exit=1
+v16-wallet-k2-flow                         exit=1
 v17-front-back-wiring                      exit=0
 v18-thank-you-envelope                     exit=0
 v19-contract-obfuscation-layers            exit=0
@@ -38,9 +38,9 @@ v21-anti-abuse-downloads                   exit=0
 v22-placeholder-gates                      exit=0
 ===== REPO / GIT PROOF =====
 ### git rev-parse HEAD
-c9437df1f33a826866d922300203e98c16fa5409
+044f13f3ab04660cd3d235b38b93913f884b51e4
 ### git branch --show-current
-securegate/eip-777g-final-build
+copilot/securegate-eip-777g-frontend-correction
 ===== RAW DRIFT SCAN =====
-drift hits: 67
+drift hits: 65
 ===== DONE =====
