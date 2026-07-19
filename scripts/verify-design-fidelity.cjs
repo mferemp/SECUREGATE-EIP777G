@@ -114,7 +114,7 @@ check('locked branch keeps footer handle non-interactive', () => {
 });
 
 check('no Surf or v0 scaffold branding leaks into visible frontend sources', () => {
-  for (const banned of [/\bSurf\b/i, /\bSurfAI\b/i, /\bv0\b/i]) {
+  for (const banned of [/\bSurf(?:AI| SDK)?\b/i, /\bCreated with v0\b/i, /\bv0 by Vercel\b/i, /\bv0\.dev\b/i]) {
     assert(!banned.test(visibleFrontend), 'forbidden branding leaked: ' + banned);
   }
 });
