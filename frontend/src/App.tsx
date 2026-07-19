@@ -221,6 +221,19 @@ export default function App() {
   const toastId = useRef(0)
   const selectedChainMeta = chains.find((c) => c.slug === selectedChain)
   const deployableChains = chains.filter((c) => c.deploySupported)
+  const runtimeTitle = runtimePhase === 'ready' && runtime?.node24
+    ? 'NODE 24 READY'
+    : runtimePhase === 'error'
+      ? 'RUNTIME TELEMETRY OFFLINE'
+      : 'CHECKING RUNTIME'
+  const runtimeDescription = runtimePhase === 'ready' && runtime
+    ? `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}`
+    : runtimePhase === 'error'
+      ? 'Backend runtime could not be loaded from /api/runtime.'
+      : 'Backend runtime is reported through /api/runtime.'
+  const chainSummary = chains.length
+    ? `${chains.slice(0, 3).map((chain) => chain.name).join(' · ')}${chains.length > 3 ? ` · +${chains.length - 3} more` : ''}`
+    : 'SecureGate is loading /api/chains.'
 
   const pushToast = useCallback((kind: Toast['kind'], text: string) => {
     const id = ++toastId.current
@@ -969,13 +982,13 @@ export default function App() {
           <section className="sg-overview-grid" aria-label="Operations overview">
             <article className="sg-overview-card">
               <div className="sg-overview-kicker">RUNTIME</div>
-              <strong>{runtimePhase === 'ready' && runtime?.node24 ? 'NODE 24 READY' : runtimePhase === 'error' ? 'RUNTIME TELEMETRY OFFLINE' : 'CHECKING RUNTIME'}</strong>
-              <span>{runtimePhase === 'ready' && runtime ? `${runtime.node} · uptime ${formatUptime(runtime.uptimeSec)}` : runtimePhase === 'error' ? 'Backend runtime could not be loaded from /api/runtime.' : 'Backend runtime is reported through /api/runtime.'}</span>
+              <strong>{runtimeTitle}</strong>
+              <span>{runtimeDescription}</span>
             </article>
             <article className="sg-overview-card">
               <div className="sg-overview-kicker">CHAINS</div>
               <strong>{chains.length ? `${deployableChains.length}/${chains.length} DEPLOYABLE` : 'LOADING CHAIN REGISTRY'}</strong>
-              <span>{chains.length ? chains.map((chain) => chain.name).join(' · ') : 'SecureGate is loading /api/chains.'}</span>
+              <span>{chainSummary}</span>
             </article>
             <article className="sg-overview-card">
               <div className="sg-overview-kicker">FUNDING</div>
