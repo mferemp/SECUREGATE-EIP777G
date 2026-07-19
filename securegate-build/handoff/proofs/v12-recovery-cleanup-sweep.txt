@@ -1,0 +1,13 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-recovery-cleanup-sweep.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:17Z
+----------------------------------------------------------------
+PASS freshScratch() starts with both secrets blank
+PASS scrub() wipes both secrets in place
+PASS FORBIDDEN_BACKEND_KEYS covers every session secret name
+PASS isBackendSafe rejects any key-shaped field
+PASS backendDeployBody yields signedTx ONLY
+
+verify-recovery-cleanup-sweep: 5 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

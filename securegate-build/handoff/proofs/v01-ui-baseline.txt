@@ -1,0 +1,14 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-ui-baseline.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:16Z
+----------------------------------------------------------------
+PASS PROGRESS_LABELS is exactly the 5 canonical labels in order
+PASS neutral K3 copy present (mechanics hidden)
+PASS no forbidden mechanics vocabulary appears in exported UI strings
+PASS safeLabel() redacts forbidden mechanics terms at runtime
+PASS App.tsx imports PROGRESS_LABELS + HUMAN_ROUTE_MSG from uiLabels
+PASS App.tsx does NOT hardcode a divergent progress-label array
+
+verify-ui-baseline: 6 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

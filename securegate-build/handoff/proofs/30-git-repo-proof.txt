@@ -1,0 +1,18 @@
+### git rev-parse HEAD
+c9437df1f33a826866d922300203e98c16fa5409
+### git branch --show-current
+securegate/eip-777g-final-build
+### git status --short
+### tracked file count
+198
+### required active-root files present:
+backend/routes/deploy.js
+backend/routes/funding.js
+contracts/SecureGate.sol
+foundry.toml
+frontend/src/App.tsx
+out/SecureGate.sol/SecureGate.json
+script/DeploySecureGate.s.sol
+scripts/verify-abi-canonical.cjs
+scripts/with-node24.sh
+test/SecureGate.t.sol

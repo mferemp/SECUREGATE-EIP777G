@@ -1,0 +1,16 @@
+### COMMAND: /workspaces/scripts/with-node24.sh forge test -vvv
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:10Z
+----------------------------------------------------------------
+No files changed, compilation skipped
+
+Ran 4 tests for test/SecureGate.t.sol:SecureGateTest
+[PASS] test_constructor_sets_keys() (gas: 14005)
+[PASS] test_k2_authorizes_and_k1_executes_to_k3() (gas: 202708)
+[PASS] test_non_k3_destination_is_captured_not_routed() (gas: 35186)
+[PASS] test_only_k1_can_queue() (gas: 154031)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 1.55ms (786.22µs CPU time)
+
+Ran 1 test suite in 7.42ms (1.55ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)
+----------------------------------------------------------------
+### EXIT: 0

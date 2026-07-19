@@ -1,0 +1,31 @@
+### COMMAND: /workspaces/scripts/with-node24.sh forge build --via-ir
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:10Z
+----------------------------------------------------------------
+No files changed, compilation skipped
+warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+    ╭▸ contracts/SecureGate.sol:150:13
+    │
+150 │         if (deadline <= block.timestamp) revert InvalidDeadline();
+    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    │
+    ╰ help: https://book.getfoundry.sh/reference/forge/forge-lint#block-timestamp
+
+warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+    ╭▸ contracts/SecureGate.sol:176:13
+    │
+176 │         if (block.timestamp > intent.deadline) revert InvalidDeadline();
+    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    │
+    ╰ help: https://book.getfoundry.sh/reference/forge/forge-lint#block-timestamp
+
+warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+    ╭▸ contracts/SecureGate.sol:191:13
+    │
+191 │         if (block.timestamp > intent.deadline) revert InvalidDeadline();
+    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    │
+    ╰ help: https://book.getfoundry.sh/reference/forge/forge-lint#block-timestamp
+
+----------------------------------------------------------------
+### EXIT: 0
