@@ -1,10 +1,48 @@
 ### git rev-parse HEAD
-c9437df1f33a826866d922300203e98c16fa5409
+044f13f3ab04660cd3d235b38b93913f884b51e4
 ### git branch --show-current
-securegate/eip-777g-final-build
+copilot/securegate-eip-777g-frontend-correction
 ### git status --short
+ M .node24-env
+ M handoff/proofs/00-SUMMARY.txt
+ M handoff/proofs/01-node-version.txt
+ M handoff/proofs/02-node24-assert.txt
+ M handoff/proofs/03-forge-version.txt
+ M handoff/proofs/04-forge-build-via-ir.txt
+ M handoff/proofs/05-forge-test-vvv.txt
+ M handoff/proofs/06-extract-bytecode.txt
+ M handoff/proofs/07-verify-abi-canonical.txt
+ M handoff/proofs/08-frontend-type-check.txt
+ M handoff/proofs/09-frontend-build.txt
+ M handoff/proofs/10-backend-selftest.txt
+ M handoff/proofs/11-backend-drift-scan.txt
+ M handoff/proofs/12-backend-verify-artifact.txt
+ M handoff/proofs/30-git-repo-proof.txt
+ D handoff/proofs/40-drift-scan-raw.txt
+ M handoff/proofs/v01-ui-baseline.txt
+ M handoff/proofs/v02-no-drift.txt
+ M handoff/proofs/v03-authgate-session.txt
+ M handoff/proofs/v04-authgate-sweep.txt
+ M handoff/proofs/v05-authgate-attempt-limits.txt
+ M handoff/proofs/v06-device-breadcrumb.txt
+ M handoff/proofs/v07-authgate-passkey.txt
+ M handoff/proofs/v08-admin-passkey.txt
+ M handoff/proofs/v09-2fa-no-limits.txt
+ M handoff/proofs/v10-recovery-flow-ui.txt
+ M handoff/proofs/v11-funding-gas.txt
+ M handoff/proofs/v12-recovery-cleanup-sweep.txt
+ M handoff/proofs/v13-blacklist-k3.txt
+ M handoff/proofs/v14-k3-execution-sweep.txt
+ M handoff/proofs/v15-k2-intent-builders.txt
+ M handoff/proofs/v16-wallet-k2-flow.txt
+ M handoff/proofs/v17-front-back-wiring.txt
+ M handoff/proofs/v18-thank-you-envelope.txt
+ M handoff/proofs/v19-contract-obfuscation-layers.txt
+ M handoff/proofs/v20-obfuscation-ci.txt
+ M handoff/proofs/v21-anti-abuse-downloads.txt
+ M handoff/proofs/v22-placeholder-gates.txt
 ### tracked file count
-198
+263
 ### required active-root files present:
 backend/routes/deploy.js
 backend/routes/funding.js

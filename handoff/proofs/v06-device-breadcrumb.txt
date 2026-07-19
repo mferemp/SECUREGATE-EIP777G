@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-device-breadcrumb.cjs
-### CWD: /workspaces/backend
-### DATE: 2026-07-16T04:04:16Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-device-breadcrumb.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/backend
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS S04: canonical trace events include all required names
 PASS S04: every trace event has an explicit TTL window

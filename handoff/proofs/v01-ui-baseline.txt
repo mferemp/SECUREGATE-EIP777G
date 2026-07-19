@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-ui-baseline.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:16Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-ui-baseline.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:35Z
 ----------------------------------------------------------------
 PASS PROGRESS_LABELS is exactly the 5 canonical labels in order
 PASS neutral K3 copy present (mechanics hidden)

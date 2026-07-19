@@ -1,10 +1,7 @@
-### COMMAND: /workspaces/scripts/with-node24.sh forge --version
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:10Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh forge --version
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:33Z
 ----------------------------------------------------------------
-forge Version: 1.7.1
-Commit SHA: 4072e48705af9d93e3c0f6e29e93b5e9a40caed8
-Build Timestamp: 2026-05-08T07:50:55.527285345Z (1778226655)
-Build Profile: dist
+/home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh: line 30: exec: forge: not found
 ----------------------------------------------------------------
-### EXIT: 0
+### EXIT: 127

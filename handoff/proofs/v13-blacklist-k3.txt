@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-blacklist-k3.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:17Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-blacklist-k3.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS contract executes ONLY to K3 (transfer targets K3, never a param)
 PASS contract captures a non-K3 destination as suspect (blacklist), never routes it

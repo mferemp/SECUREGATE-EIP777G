@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-authgate-attempt-limits.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:16Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-authgate-attempt-limits.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS MAX_DEVICE_ATTEMPTS is 3
 PASS 3 failed device attempts darken SCAN+LINK for that K1

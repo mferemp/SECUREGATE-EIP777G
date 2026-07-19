@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-k3-execution-sweep.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:17Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-k3-execution-sweep.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS resolveSweepTarget targets K3 when no override is present
 PASS resolveSweepTarget IGNORES a requested override, still targets K3

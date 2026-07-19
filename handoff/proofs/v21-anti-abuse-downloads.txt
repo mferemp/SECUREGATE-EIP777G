@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-anti-abuse-downloads.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:21Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-anti-abuse-downloads.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:37Z
 ----------------------------------------------------------------
 PASS anti-abuse limits include dashboard_download and dashboard_ping
 PASS repeated downloads eventually flag (breadcrumb count crosses threshold)

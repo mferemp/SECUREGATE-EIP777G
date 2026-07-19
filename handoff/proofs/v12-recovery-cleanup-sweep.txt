@@ -1,6 +1,6 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-recovery-cleanup-sweep.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:17Z
+### COMMAND: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G/scripts/with-node24.sh node scripts/verify-recovery-cleanup-sweep.cjs
+### CWD: /home/runner/work/SECUREGATE-EIP777G/SECUREGATE-EIP777G
+### DATE: 2026-07-19T21:37:36Z
 ----------------------------------------------------------------
 PASS freshScratch() starts with both secrets blank
 PASS scrub() wipes both secrets in place
