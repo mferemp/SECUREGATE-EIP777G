@@ -42,8 +42,10 @@ const app = fs.readFileSync(APP, 'utf8');
   });
   await check('thank-you panel and interactive handle are rendered only after Auth-Gate unlock', () => {
     assert(/\{dashboardUnlocked && \(\s*<section id="thanks-panel"/s.test(app), 'thank-you panel is not unlock-gated');
-    assert(/\{dashboardUnlocked \? \(\s*<a[\s\S]*?https:\/\/x\.com\/hope_ology[\s\S]*?\) : \(\s*<span className="sg-footer-handle">@hope_ology<\/span>\s*\)\}/s.test(app),
-      'footer @hope_ology branding is interactive before unlock');
+    assert(/\{dashboardUnlocked\s*\?\s*\([\s\S]*?<a[\s\S]*?className="sg-footer-handle"[\s\S]*?href="https:\/\/x\.com\/hope_ology"/s.test(app),
+      'unlocked footer @hope_ology link branch missing');
+    assert(/:\s*\(\s*<span className="sg-footer-handle">@hope_ology<\/span>\s*\)\s*\}/s.test(app),
+      'locked footer @hope_ology branch is not non-interactive text');
   });
   await check('thank-you address is NOT wired into any deploy/proof/execution body', () => {
     // Line-scoped scan: no single statement may pass a thanks address into a
