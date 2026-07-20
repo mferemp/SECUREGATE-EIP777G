@@ -1,0 +1,31 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-abi-canonical.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:10Z
+----------------------------------------------------------------
+PASS canonical artifact was produced by a Foundry build (bytecode present)
+PASS required ABI present: DOMAIN_SEPARATOR()
+PASS required ABI present: GATE_CHAIN_ID()
+PASS required ABI present: K1()
+PASS required ABI present: K2()
+PASS required ABI present: K3()
+PASS required ABI present: authorizeIntent(bytes32,bytes)
+PASS required ABI present: computeAuthorizationDigest(bytes32)
+PASS required ABI present: computeIntentHash(uint8,address,uint256,uint256,bytes32,uint256)
+PASS required ABI present: executeIntent(bytes32)
+PASS required ABI present: intents(bytes32)
+PASS required ABI present: queueERC1155(address,uint256,uint256,bytes32,uint256)
+PASS required ABI present: queueERC20(address,uint256,bytes32,uint256)
+PASS required ABI present: queueERC721(address,uint256,bytes32,uint256)
+PASS required ABI present: recordAttemptedDestination(address)
+PASS required ABI present: suspectDestination(address)
+PASS required ABI present: usedNonces(bytes32)
+PASS forbidden old ABI absent: queueIntent
+PASS forbidden old ABI absent: forwardERC20
+PASS forbidden old ABI absent: computeEIP712Digest
+PASS forbidden old ABI absent: domainSeparator
+     abiEntries=37 bytecodeBytes=7030 bytecodeSha256=09802e801b83f894d804bf818c51f099c407cbe41d769fbecd4f87f62a020f55
+PASS ABI entry count + bytecode size reported
+
+verify-abi-canonical: 22 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

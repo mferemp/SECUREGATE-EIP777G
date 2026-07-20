@@ -1,0 +1,12 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-authgate-sweep.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:16Z
+----------------------------------------------------------------
+PASS SCAN is a same-device sweep
+PASS LINK DEVICE is a usb-linked-device sweep
+PASS neither sweep ever verifies or unlocks execution
+PASS sweep module has NO asset-movement surface (no transfer/queue/execute/sign/broadcast)
+
+verify-authgate-sweep: 4 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

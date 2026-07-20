@@ -1,0 +1,15 @@
+backend/
+contracts/
+test/
+docs/
+script/
+node-compile-cache/
+out/
+cache/
+uploads/
+.tools/
+*.md
+foundry.toml
+*.sh
+scripts/
+securegate-*.zip*

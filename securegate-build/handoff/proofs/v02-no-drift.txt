@@ -1,0 +1,22 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-no-drift.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:16Z
+----------------------------------------------------------------
+    [scan] 157 active files, 81 classified hits, 0 unclassified
+PASS  ACTION type string matches contract
+PASS  AUTHORIZE type string matches contract
+PASS  EIP-712 domain is SecureGate / version 1
+PASS  helpers import only ethers (+ type QueueKind)
+PASS  deploy route rejects k2SessionKey + all key fields
+PASS  no signTypedData / private-key signing in backend runtime
+PASS  no forbidden old-ABI method names in helpers/UI
+PASS  K2 helper never reads a k2 private key
+PASS  UI collects K2 signature + addresses, not K2/K3 keys
+PASS  K2 helper rejects the all-zero signature
+PASS  active-source drift scan (all hits classified)
+PASS  no active provenance drift (SecureGate is not an EIP-712 project)
+PASS  required provenance wording present in active docs
+
+verify-no-drift: 13/13 passed
+----------------------------------------------------------------
+### EXIT: 0

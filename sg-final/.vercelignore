@@ -1,0 +1,13 @@
+backend/
+contracts/
+test/
+docs/
+.tools/
+cache/
+node-compile-cache/
+out/
+*.md
+*.sh
+foundry.toml
+script/
+scripts/

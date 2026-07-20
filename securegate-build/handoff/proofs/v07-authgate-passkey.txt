@@ -1,0 +1,14 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-authgate-passkey.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:16Z
+----------------------------------------------------------------
+PASS PASSKEY input + ENTER button render below LINK DEVICE
+PASS passkey lane stays enabled while SCAN/LINK are darkened (devicesLocked)
+PASS register stores ONLY a salted digest (raw passkey never persisted)
+PASS correct passkey verifies; mismatch fails closed
+PASS passkey is K1-bound, not per-chain (digest keyed on K1 only)
+PASS client wrapper treats a verified passkey as human-route signal ONLY
+
+verify-authgate-passkey: 6 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

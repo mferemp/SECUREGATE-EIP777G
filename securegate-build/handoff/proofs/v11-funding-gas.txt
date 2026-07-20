@@ -1,0 +1,15 @@
+### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-funding-gas.cjs
+### CWD: /workspaces
+### DATE: 2026-07-16T04:04:17Z
+----------------------------------------------------------------
+PASS funding route exists at GET /api/funding/:chain
+PASS funding estimate uses backend RPC (chains.rpcUrlFor)
+PASS funding response returns NO rpc endpoint URL
+PASS funding computes a real gas estimate (eth_gasPrice * gas)
+PASS funding estimate is not a fabricated constant string
+PASS client reaches gas/funding data through backend routes only (no direct provider URL)
+PASS client funding path carries no private-key material
+
+verify-funding-gas: 7 passed, 0 failed
+----------------------------------------------------------------
+### EXIT: 0

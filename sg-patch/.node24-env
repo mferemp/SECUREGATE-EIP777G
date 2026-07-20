@@ -1,0 +1,1 @@
+export PATH="/vercel/share/v0-project/sg-patch/.tools/node24/bin:$PATH"
