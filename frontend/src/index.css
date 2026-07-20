@@ -707,22 +707,39 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #000;
   border: 1.5px solid var(--sg-pink);
   color: var(--sg-pink);
   font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 10px;
   transition: box-shadow 0.2s;
+  user-select: none;
 }
 .sg-admin-circle:hover {
   box-shadow: 0 0 10px rgba(255,63,180,0.5);
+}
+
+/* Inline admin panel — revealed by ⚫-' button click */
+.sg-admin-inline {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--sg-panel-2);
+  border: 1px solid var(--sg-pink);
+  border-radius: 10px;
+}
+.sg-admin-inline-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 700;
 }
 
 /* PASSKEY input area */

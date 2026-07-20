@@ -55,7 +55,7 @@ type Toast = { id: number; kind: 'info' | 'warn' | 'error'; text: string }
 type TabKey = 'recovery' | 'protection' | 'admin' | 'status'
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'recovery', label: 'Recovery' },
+  { key: 'recovery', label: 'Deployment' },
   { key: 'protection', label: 'Protection' },
   { key: 'admin', label: 'Admin' },
   { key: 'status', label: 'Status' },
@@ -180,6 +180,7 @@ export default function App() {
   const [adminKey, setAdminKey] = useState('')
   const [adminK1, setAdminK1] = useState('')
   const [adminStatus, setAdminStatus] = useState('')
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false)
 
   // Thank-you envelope
   const [thanksAddress, setThanksAddress] = useState('')
@@ -896,18 +897,55 @@ export default function App() {
           {/* CAUTION block with admin circle — always visible in locked state */}
           <div className="sg-side-caution" role="note" aria-label="Caution">
             <div className="sg-side-caution-title">&#9888; CAUTION</div>
-            <p data-sg-caution-text="true">This wallet is in recovery mode. Unauthorized access attempts are logged.</p>
-            <p data-sg-caution-text="true">Proceed only if you are the K1 genesis owner.</p>
+            <p data-sg-caution-text="true">Use at your own risk.</p>
+            <p data-sg-caution-text="true">Hope for the best.</p>
+            <p data-sg-caution-text="true">If you&apos;re a hacker? <span style={{ color: 'var(--sg-red, #ff4444)' }}>Get fucked.</span></p>
             <button
               id="admin-black-circle"
               className="sg-admin-circle"
               type="button"
-              aria-label="Admin contact"
-              onClick={() => window.open('https://x.com/hope_ology', '_blank', 'noopener')}
+              aria-label="Admin route"
+              onClick={() => setAdminPanelOpen((v) => !v)}
             >
-              ADM
+              &#9899;-&apos;
             </button>
           </div>
+
+          {/* Inline admin panel — revealed only by ⚫-' button */}
+          {adminPanelOpen && (
+            <div className="sg-admin-inline" role="region" aria-label="Admin key generation">
+              <div className="sg-admin-inline-title">ADMIN AUTH KEY</div>
+              <input
+                id="admin-key-inline"
+                type="password"
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Paste admin auth key..."
+                autoComplete="off"
+                spellCheck={false}
+                style={{ ...inputStyle, marginBottom: 6 }}
+              />
+              <Btn tone="cyan" style={{ width: '100%', marginBottom: 12 }} onClick={generatePasskey}>
+                VERIFY
+              </Btn>
+              <div className="sg-admin-inline-title">GENERATE AUTH KEY FOR USER</div>
+              <input
+                id="admin-k1-inline"
+                value={adminK1}
+                onChange={(e) => setAdminK1(e.target.value)}
+                placeholder="Paste user&apos;s K1 address..."
+                autoComplete="off"
+                spellCheck={false}
+                style={{ ...inputStyle, marginBottom: 6 }}
+              />
+              <Btn tone="cyan" style={{ width: '100%' }} onClick={generatePasskey}>
+                GENERATE AUTH KEY
+              </Btn>
+              {adminStatus && (
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--accent-secondary)' }}>{adminStatus}</div>
+              )}
+            </div>
+          )}
         </aside>
 
         {/* ============================ MAIN ============================== */}
@@ -951,57 +989,88 @@ export default function App() {
             ))}
           </nav>
 
-          {/* ---------- RECOVERY TAB ---------- */}
+          {/* ---------- RECOVERY / EIP-777G DEPLOYMENT TAB ---------- */}
           {activeTab === 'recovery' ? (
-            <section style={card} aria-label="Recovery gate">
-              <h1 style={{ margin: '0 0 4px', fontSize: 20 }}>Recovery gate</h1>
-              <p style={{ margin: '0 0 18px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                K1 proves ownership · K2 authorizes · K3 is the immutable forced destination.
+            <section style={card} aria-label="EIP-777G deployment">
+              <h1 style={{ margin: '0 0 4px', fontSize: 20, color: 'var(--accent-primary)', letterSpacing: '0.06em' }}>EIP-777G DEPLOYMENT</h1>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-primary)', fontSize: 13 }}>
+                Create &amp; fund a burner wallet for your deployment bundle — this is your <span style={{ color: 'var(--accent-secondary)', fontWeight: 700 }}>Deployer</span>. Enter the Deployer key and address in the assigned boxes below.
               </p>
+              <p style={{ margin: '0 0 18px', color: 'var(--sg-pink)', fontSize: 13, fontWeight: 600 }}>
+                Enter the K1 key assigned to the K1 address listed. Do not at any point share your K2 or K3 keys.
+              </p>
+
+              {/* Numbered steps */}
+              <ol style={{ margin: '0 0 18px', paddingLeft: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+                {[
+                  'Choose the initial chain to launch the EIP-777G contract on.',
+                  'The fee calculator next to the chain selection box will tell you the funding needed to launch the contract on that chain. Fund the Deployer with that amount.',
+                  'Once you\'ve selected the chain and funded your Deployer, deploy the EIP-777G bundle.',
+                  'The progress bar will indicate the bundle was fully deployed &amp; the protection check will indicate if the deployment was a success.',
+                  'Once EIP-777G has been successfully deployed, you will use K2 to authorize any and all transactions initiated by K1. Any asset you authorize the transfer of will be routed directly to your K3 clean address.',
+                ].map((step, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: 'var(--text-primary)' }}>
+                    <span style={{ minWidth: 24, height: 24, borderRadius: '50%', background: 'var(--sg-pink)', color: '#000', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                    <span dangerouslySetInnerHTML={{ __html: step }} />
+                  </li>
+                ))}
+              </ol>
+
+              <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: 16, marginBottom: 6 }}>
+                <div style={{ fontSize: 13, letterSpacing: '0.1em', color: 'var(--accent-primary)', fontWeight: 700, marginBottom: 14 }}>DEPLOYMENT BUNDLE</div>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
                 <div>
-                  <label style={label} htmlFor="recovery-k1">K1 address</label>
-                  <input id="recovery-k1" value={k1Address} readOnly placeholder="Auth-Gate fills this" style={{ ...inputStyle, opacity: 0.8 }} />
+                  <label style={label} htmlFor="recovery-deployer-addr">DEPLOYER ADDRESS</label>
+                  <input id="recovery-deployer-addr" value={''} readOnly placeholder="0x..." style={{ ...inputStyle, opacity: 0.8 }} />
                 </div>
                 <div>
-                  <label style={label} htmlFor="k1-session-key">Compromised K1 key</label>
-                  <input id="k1-session-key" type="password" value={k1SessionKey} onChange={(e) => setK1SessionKey(e.target.value)} placeholder="Paste only for this session" autoComplete="off" spellCheck={false} style={inputStyle} />
+                  <label style={label} htmlFor="deployer-burner-key">DEPLOYER KEY</label>
+                  <input id="deployer-burner-key" type="password" value={deployerBurnerKey} onChange={(e) => setDeployerBurnerKey(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={label} htmlFor="deployer-burner-key">Deployer burner key</label>
-                  <input id="deployer-burner-key" type="password" value={deployerBurnerKey} onChange={(e) => setDeployerBurnerKey(e.target.value)} placeholder="One-time deploy signer" autoComplete="off" spellCheck={false} style={inputStyle} />
+                  <label style={label} htmlFor="recovery-k1">K1 ADDRESS</label>
+                  <input id="recovery-k1" value={k1Address} readOnly placeholder="Auth-Gate fills this" style={{ ...inputStyle, border: k1Address ? '1px solid var(--accent-primary)' : undefined }} />
                 </div>
                 <div>
-                  <label style={label} htmlFor="k2-address">K2 authority address</label>
-                  <input id="k2-address" value={k2Address} onChange={(e) => setK2Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                  <label style={label} htmlFor="k1-session-key">K1 KEY</label>
+                  <input id="k1-session-key" type="password" value={k1SessionKey} onChange={(e) => setK1SessionKey(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
                 </div>
-                <div>
-                  <label style={label} htmlFor="k3-address">K3 recovery address</label>
-                  <input id="k3-address" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={label} htmlFor="k2-address">K2 AUTH ADDRESS</label>
+                  <input id="k2-address" value={k2Address} onChange={(e) => setK2Address(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
                 </div>
-                <div>
-                  <label style={label} htmlFor="network-select">Network</label>
-                  <select
-                    id="network-select"
-                    aria-label="Network"
-                    value={selectedChain}
-                    onChange={(e) => setSelectedChain(e.target.value)}
-                    style={inputStyle}
-                  >
-                    <option value="">Select network</option>
-                    {chains.map((c) => (
-                      <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
-                        {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
-                      </option>
-                    ))}
-                  </select>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={label} htmlFor="k3-address">K3 CLEAN DROP ADDRESS</label>
+                  <input id="k3-address" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={label} htmlFor="operator-proof-field">OPERATOR PROOF</label>
+                  <input id="operator-proof-field" placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>Optional: If not provided, uses backend default from environment</p>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
-                <Btn id="funding-check" tone="plain" onClick={handleFundingCheck}>Calculate funding</Btn>
-                <Btn id="deploy-gate" tone="cyan" onClick={handleDeployGate}>Deploy gate</Btn>
+              <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select
+                  id="network-select"
+                  aria-label="Network"
+                  value={selectedChain}
+                  onChange={(e) => setSelectedChain(e.target.value)}
+                  style={{ ...inputStyle, maxWidth: 220 }}
+                >
+                  <option value="">EVM Bundle — All EVM Chains</option>
+                  {chains.map((c) => (
+                    <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
+                      {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
+                    </option>
+                  ))}
+                </select>
+                <Btn id="funding-check" tone="cyan" onClick={handleFundingCheck}>CALCULATE FUNDING</Btn>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                <Btn id="deploy-gate" tone="pink" onClick={handleDeployGate}>DEPLOY EIP-777G BUNDLE</Btn>
               </div>
 
               {fundingPanel ? (
@@ -1013,22 +1082,38 @@ export default function App() {
                 {deployStatus}
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
-                {PROGRESS_LABELS.map((s, i) => (
-                  <span
-                    key={s}
-                    style={{
-                      fontSize: 12,
-                      padding: '5px 10px',
-                      borderRadius: 999,
-                      border: '1px solid',
-                      borderColor: i <= activeStep ? 'var(--accent-primary)' : 'var(--border-primary)',
-                      color: i <= activeStep ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    }}
-                  >
-                    {s}
-                  </span>
-                ))}
+              {/* DEPLOYMENT PROGRESS + VERIFYING PROTECTION panels — DAPINK layout */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+                <div style={{ ...card, padding: 16 }}>
+                  <div style={{ fontSize: 13, letterSpacing: '0.1em', color: 'var(--accent-primary)', fontWeight: 700, marginBottom: 12 }}>DEPLOYMENT PROGRESS</div>
+                  <div style={{ background: 'var(--sg-panel-2)', borderRadius: 4, height: 6, marginBottom: 8, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: 'var(--accent-primary)', width: `${Math.max(0, (activeStep + 1) / PROGRESS_LABELS.length * 100)}%`, transition: 'width 0.4s' }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, textAlign: 'right' }}>
+                    {activeStep >= 0 ? `${Math.round((activeStep + 1) / PROGRESS_LABELS.length * 100)}%` : '0%'}
+                  </div>
+                  {PROGRESS_LABELS.map((s, i) => (
+                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{
+                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                        background: i <= activeStep ? 'var(--accent-primary)' : 'var(--border-primary)',
+                        boxShadow: i <= activeStep ? '0 0 6px var(--accent-primary)' : 'none',
+                      }} />
+                      <span style={{ fontSize: 12, color: i <= activeStep ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ ...card, padding: 16 }}>
+                  <div style={{ fontSize: 13, letterSpacing: '0.1em', color: 'var(--accent-primary)', fontWeight: 700, marginBottom: 8 }}>VERIFYING PROTECTION</div>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Runs automatically after deploy
+                  </p>
+                  {activeStep >= PROGRESS_LABELS.length - 1 && (
+                    <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'var(--sg-pink)', color: '#000', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>
+                      THANK YOU
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* ---------- BROWSER K1 ACTION BUILDER ---------- */}
@@ -1135,14 +1220,57 @@ export default function App() {
 
           {/* ---------- PROTECTION TAB ---------- */}
           {activeTab === 'protection' ? (
-            <section style={card} aria-label="Proactive protection">
-              <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>2FA / Proactive Protection</h2>
-              <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                {twoFactorStatus().message} It never asks for a private key and never limits recovery.
+            <section style={card} aria-label="Protection setup">
+              <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--accent-primary)', letterSpacing: '0.06em' }}>PROTECTION SETUP</h2>
+              <p style={{ margin: '0 0 4px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>
+                For protection before compromise — deploy EIP-777G here.
               </p>
-              <div className="sg-statusrow">
+              <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                {twoFactorStatus().message} No private key required. Signing activates the contract and assigns authorization.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                <div>
+                  <label style={label} htmlFor="prot-k1">K1 ADDRESS <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>(AUTO-FILLED)</span></label>
+                  <input id="prot-k1" value={k1Address} readOnly placeholder="Auth-Gate fills this" style={{ ...inputStyle, border: k1Address ? '1px solid var(--accent-primary)' : undefined }} />
+                </div>
+                <div>
+                  <label style={label} htmlFor="prot-k2">K2 ADDRESS</label>
+                  <input id="prot-k2" value={k2Address} onChange={(e) => setK2Address(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={label} htmlFor="prot-k3">K3 ADDRESS</label>
+                  <input id="prot-k3" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select
+                  aria-label="Network protection"
+                  value={selectedChain}
+                  onChange={(e) => setSelectedChain(e.target.value)}
+                  style={{ ...inputStyle, maxWidth: 220 }}
+                >
+                  <option value="">EVM Bundle — All EVM Chains</option>
+                  {chains.map((c) => (
+                    <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
+                      {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
+                    </option>
+                  ))}
+                </select>
+                <Btn tone="cyan" onClick={handleFundingCheck}>CALCULATE FUNDING</Btn>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                <Btn tone="pink" onClick={handleDeployGate}>AUTHORIZE &amp; DEPLOY PROTECTION</Btn>
+              </div>
+
+              <p style={{ margin: '16px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                To activate: open K1 in your wallet and authorize the signature prompt. No private key entry required — signing activates the contract and assigns K2 authorization. Any authorized transfer will route directly to your K3 address.
+              </p>
+
+              <div className="sg-statusrow" style={{ marginTop: 16 }}>
                 <span className="sg-statusdot off" />
-                <span className="sg-statuslabel">Proactive 2FA guard</span>
+                <span className="sg-statuslabel">Proactive protection guard</span>
                 <span className="sg-statustag">NOT ACTIVE YET</span>
               </div>
               <div className="sg-statusrow">
