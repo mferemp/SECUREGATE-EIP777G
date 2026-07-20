@@ -1,0 +1,18 @@
+{
+  "name": "backend",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "node scripts/check-env.js node --watch server.js",
+    "selftest": "node scripts/selftest.cjs",
+    "drift:scan": "node scripts/drift-scan.cjs",
+    "verify:artifact": "node scripts/obfuscation-equivalence.cjs"
+  },
+  "dependencies": {
+    "@surf-ai/sdk": "1.0.5",
+    "ethers": "^6.17.0",
+    "express": "4.22.1"
+  }
+}
