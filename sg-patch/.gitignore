@@ -12,3 +12,4 @@ backend/.env.securegate
 .vulcan/
 uploads/
 handoff/proofs/
+.vercel
