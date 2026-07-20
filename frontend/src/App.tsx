@@ -909,8 +909,8 @@ export default function App() {
             <p>This dashboard executes the authentication flow client-side.</p>
             <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
             <p>Cryptographic checks run in your browser.</p>
-            <p>Chain reads use the server-supplied RPC configuration.</p>
-            <p>RPC is not part of the auth gate.</p>
+            <p>Chain checks stay backend-routed for security.</p>
+            <p>Endpoint details never appear in the browser.</p>
           </section>
 
           <section className="sg-caution" role="note" aria-label="Caution">
