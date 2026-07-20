@@ -1045,11 +1045,7 @@ export default function App() {
                   <label style={label} htmlFor="k3-address">K3 CLEAN DROP ADDRESS</label>
                   <input id="k3-address" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={label} htmlFor="operator-proof-field">OPERATOR PROOF</label>
-                  <input id="operator-proof-field" placeholder="0x..." autoComplete="off" spellCheck={false} style={inputStyle} />
-                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>Optional: If not provided, uses backend default from environment</p>
-                </div>
+
               </div>
 
               <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap', alignItems: 'center' }}>

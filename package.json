@@ -5,9 +5,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "npm --prefix frontend install && npm --prefix frontend run build",
-    "install:all": "npm --prefix frontend install && npm --prefix backend install",
-    "verify": "bash scripts/with-node24.sh node scripts/verify-design-fidelity.cjs && bash scripts/with-node24.sh node scripts/verify-thank-you-envelope.cjs && bash scripts/with-node24.sh node scripts/verify-authgate-passkey.cjs && bash scripts/with-node24.sh node scripts/verify-admin-passkey.cjs && bash scripts/with-node24.sh node scripts/verify-recovery-flow-ui.cjs && bash scripts/with-node24.sh node scripts/verify-funding-gas.cjs && bash scripts/with-node24.sh node scripts/verify-front-back-wiring.cjs && bash scripts/with-node24.sh node scripts/verify-csp.cjs"
+    "dev": "npm --prefix frontend run dev -- --host 0.0.0.0",
+    "build": "npm --prefix frontend run build",
+    "type-check": "npm --prefix frontend run type-check",
+    "verify:root": "node scripts/verify-root-dev.cjs",
+    "verify:auth-state": "node scripts/verify-auth-state-gate.cjs",
+    "verify": "npm run verify:root && npm run verify:auth-state && bash scripts/with-node24.sh node scripts/verify-design-fidelity.cjs && bash scripts/with-node24.sh node scripts/verify-thank-you-envelope.cjs && bash scripts/with-node24.sh node scripts/verify-authgate-passkey.cjs && bash scripts/with-node24.sh node scripts/verify-admin-passkey.cjs && bash scripts/with-node24.sh node scripts/verify-recovery-flow-ui.cjs && bash scripts/with-node24.sh node scripts/verify-funding-gas.cjs && bash scripts/with-node24.sh node scripts/verify-front-back-wiring.cjs && bash scripts/with-node24.sh node scripts/verify-csp.cjs",
+    "build:proof": "npm run verify && npm run type-check && npm run build"
   },
   "dependencies": {
     "express": "^4.19.2"
