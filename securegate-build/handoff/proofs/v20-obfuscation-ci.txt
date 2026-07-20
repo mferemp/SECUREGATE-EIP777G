@@ -1,8 +1,0 @@
-### COMMAND: /workspaces/scripts/with-node24.sh node scripts/verify-obfuscation-ci.cjs
-### CWD: /workspaces
-### DATE: 2026-07-16T04:04:21Z
-----------------------------------------------------------------
-SKIPPED: no obfuscated build configured
-(A token-equivalence guard exists at backend/scripts/obfuscation-equivalence.cjs, but no obfuscation TOOL + build output is configured, so obfuscation CI is not claimed complete.)
-----------------------------------------------------------------
-### EXIT: 0
