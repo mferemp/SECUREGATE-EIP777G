@@ -797,7 +797,6 @@ export default function App() {
             verifier is connected. Never reports a fake "armed" state. */}
         <span id="power-status" className="sg-power" title="Gate stays locked until a verifier is connected">
           <span className="dot" />
-          <span className="txt">GATE&nbsp;LOCKED</span>
         </span>
 
         <button id="scrub-session" type="button" className="sg-scrub-btn" onClick={scrub}>SCRUB</button>
