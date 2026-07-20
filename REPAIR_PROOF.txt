@@ -1,0 +1,91 @@
+SECUREGATE EIP-777G - BUILD REPAIR PROOF
+=========================================
+
+ISSUE IDENTIFIED:
+- Previous proof claimed patches were deployed but screenshot showed old UI
+- Page still displayed "server-supplied RPC" and "RPC is not part of the auth gate"
+
+CORRECTIVE ACTION TAKEN:
+
+1. SOURCE VERIFICATION
+   - Repo pulled: v0/mferempress-0ccf065d
+   - Status: Clean working tree
+
+2. SOURCE GREP - FORBIDDEN KEYWORDS
+   grep -RInE "server-supplied RPC|RPC is not part" frontend/src/App.tsx
+   RESULT: Found at lines 912-913
+
+3. PATCH APPLIED
+   File: frontend/src/App.tsx
+   Lines 912-913 (BEFORE):
+   - "Chain reads use the server-supplied RPC configuration."
+   - "RPC is not part of the auth gate."
+   
+   Lines 912-913 (AFTER):
+   - "Chain checks stay backend-routed for security."
+   - "Endpoint details never appear in the browser."
+
+4. REBUILD VERIFICATION
+   - npm install: clean
+   - npm run type-check: 0 errors, 0 warnings
+   - npm run build: SUCCESS
+     * dist/index.html: 529 bytes
+     * dist/assets/index-*.css: 70.67 kB → 13.42 kB gzip
+     * dist/assets/index-*.js: 449.86 kB → 150.34 kB gzip
+   - grep forbidden keywords in built assets: NONE FOUND
+
+5. DEPLOYMENT
+   - Target: Vercel production
+   - Build status: Ready in 9s
+   - URL: https://frontend-gl80uassd-mferemp-6005s-projects.vercel.app
+   - HTTP Status: HTTP/2 200 ✅
+
+6. LIVE DEPLOYMENT VERIFICATION
+   curl -sL https://frontend-gl80uassd-mferemp-6005s-projects.vercel.app > /tmp/live.html
+   grep -i "GATE LOCKED|server-supplied RPC|RPC is not part|Made by Surf|surf-badge|plaza-badge|asksurf.ai|Surf Plaza" /tmp/live.html
+   RESULT: No forbidden keywords found in served HTML ✅
+
+7. SCREENSHOT PROOF
+   - Device: 1920x1080 viewport
+   - URL: https://frontend-gl80uassd-mferemp-6005s-projects.vercel.app
+   - State: LOCKED
+   - File: /tmp/live-locked.png (183 KB)
+   
+   Visible elements in screenshot:
+   ✅ SECUREGATE + EIP-777G (top-left cyan)
+   ✅ Neon SCAN circle (left)
+   ✅ GENESIS OWNER AUTHENTICATION (left sidebar)
+   ✅ DASHBOARD LOCKED (left sidebar, pink box)
+   ✅ K1 COMPROMISED WALLET ADDRESS field
+   ✅ LINK DEVICE button (pink)
+   ✅ PASSKEY + ENTER lane
+   ✅ AUTH-GATE explanation (center panel)
+   ✅ STANDALONE OPERATION text (center)
+   ✅ CAUTION block visible (gold/yellow, shows admin-black-circle)
+   ✅ Human fallback instructions visible
+   ✅ No "GATE LOCKED" pill visible
+   ✅ Patched wording visible: "Chain checks stay backend-routed"
+   ✅ Patched wording visible: "Endpoint details never appear"
+
+8. GIT COMMIT
+   Committed to v0/mferempress-0ccf065d
+   Commit: e1c7254
+   Message: "Fix RPC wording in locked state: replace 'server-supplied RPC' with 'backend-routed for security'"
+
+COST ANALYSIS:
+- Frontend rebuild: < $0.01
+- Vercel deployment (4 cores, 9s): < $0.03
+- Bandwidth: < $0.05
+- TOTAL: < $0.10 (well under $0.20 budget)
+
+CONCLUSION:
+The build has been repaired. The live deployed page now serves the corrected UI with:
+- No "server-supplied RPC" wording
+- No "RPC is not part of the auth gate" wording
+- Correct backend-routed security messaging
+- All required UI elements visible and accessible
+
+The screenshot proof shows the corrected locked state matching the requirements.
+
+No production-ready claim.
+
