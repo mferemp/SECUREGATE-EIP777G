@@ -815,7 +815,7 @@ export default function App() {
       <div className="sg-shell">
         {/* ========================== 264px FIXED SIDEBAR ================== */}
         <aside className="sg-sidebar" aria-label="Auth-Gate">
-          {/* Neon circular SCAN control — same-device Auth-Gate signal */}
+          {/* Neon circular SCAN control �� same-device Auth-Gate signal */}
           <div className="sg-scan-wrap">
             <button
               id="scan-authenticator"
@@ -888,15 +888,25 @@ export default function App() {
           {/* AUTH-GATE guidance */}
           <div className="sg-authgate-note">
             <div className="sg-authgate-title">AUTH-GATE</div>
-            <p>Same device: press SCAN.</p>
-            <p>Different device: connect by USB first, then press LINK DEVICE.</p>
-            <p>Enter K1 before SCAN, LINK DEVICE, or PASSKEY. K1 binds to this session until you SCRUB.</p>
-            <p>Save this passkey. It is bound to this K1 only. If lost, you must re-run Auth-Gate.</p>
-            <p>
-              Human fallback stays open: reach out to{' '}
-              <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">@hope_ology</a>.
-            </p>
-            <p>SCRUB clears local/session state at any time.</p>
+            <p>Same device: SCAN. Different device: USB first, then LINK DEVICE.</p>
+            <p>Enter K1 before SCAN, LINK DEVICE, or PASSKEY.</p>
+            <p>SCRUB clears all local state at any time.</p>
+          </div>
+
+          {/* CAUTION block with admin circle — always visible in locked state */}
+          <div className="sg-side-caution" role="note" aria-label="Caution">
+            <div className="sg-side-caution-title">&#9888; CAUTION</div>
+            <p data-sg-caution-text="true">This wallet is in recovery mode. Unauthorized access attempts are logged.</p>
+            <p data-sg-caution-text="true">Proceed only if you are the K1 genesis owner.</p>
+            <button
+              id="admin-black-circle"
+              className="sg-admin-circle"
+              type="button"
+              aria-label="Admin contact"
+              onClick={() => window.open('https://x.com/hope_ology', '_blank', 'noopener')}
+            >
+              ADM
+            </button>
           </div>
         </aside>
 

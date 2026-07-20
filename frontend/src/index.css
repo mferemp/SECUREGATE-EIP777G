@@ -633,6 +633,98 @@
   text-align: right;
 }
 
+/* FOOTER — fixed bottom-right, always visible */
+.sg-footer {
+  position: fixed;
+  bottom: 16px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  z-index: 200;
+  pointer-events: none;
+}
+.sg-footer a { pointer-events: auto; }
+.sg-footer-thanks {
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--sg-muted);
+  text-transform: uppercase;
+}
+.sg-footer-built {
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--sg-muted);
+  text-transform: uppercase;
+}
+.sg-footer-handle {
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--sg-cyan);
+  text-decoration: none;
+}
+.sg-footer-handle:hover { color: var(--sg-pink); }
+.sg-footer-deliverables {
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 9px;
+  color: var(--sg-muted);
+  text-decoration: none;
+}
+
+/* SIDEBAR CAUTION block */
+.sg-side-caution {
+  margin-top: 14px;
+  border: 1.5px solid var(--sg-gold);
+  border-radius: 10px;
+  padding: 14px 14px 10px;
+  background: rgba(217,178,90,0.06);
+}
+.sg-side-caution-title {
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--sg-gold);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.sg-side-caution p, .sg-side-caution [data-sg-caution-text] {
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--sg-gold);
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
+/* ADMIN BLACK CIRCLE */
+.sg-admin-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #000;
+  border: 1.5px solid var(--sg-pink);
+  color: var(--sg-pink);
+  font-family: 'Roboto Mono Variable','Roboto Mono',monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: box-shadow 0.2s;
+}
+.sg-admin-circle:hover {
+  box-shadow: 0 0 10px rgba(255,63,180,0.5);
+}
+
 /* PASSKEY input area */
 #passkey-wrap {
   display: flex;
