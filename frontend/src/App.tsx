@@ -52,12 +52,11 @@ type Chain = {
 }
 
 type Toast = { id: number; kind: 'info' | 'warn' | 'error'; text: string }
-type TabKey = 'recovery' | 'protection' | 'admin' | 'status'
+type TabKey = 'recovery' | 'protection' | 'status'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'recovery', label: 'Deployment' },
   { key: 'protection', label: 'Protection' },
-  { key: 'admin', label: 'Admin' },
   { key: 'status', label: 'Status' },
 ]
 
@@ -189,11 +188,13 @@ export default function App() {
   const [thanksStatus, setThanksStatus] = useState('')
 
   const devicesLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
-  // The recovery/protection/admin/status workspace is revealed only AFTER the
-  // Auth-Gate resolves (a verified K1-bound passkey, or the human-fallback
-  // route after repeated device failures). Until then the landing view is the
-  // STANDALONE OPERATION canvas — the tabbed workspace is never the landing.
-  const dashboardUnlocked = humanRoute.trim() !== ''
+  // authGateVerified — true only after a K1-bound passkey is confirmed OR after
+  // the human-fallback route triggers (3 failed device scans). The tabbed
+  // workspace is never shown until this resolves. humanRoute is set by both
+  // paths (passkeyEnter sets it on remote.verified; deviceAttempt sets it at
+  // MAX_DEVICE_ATTEMPTS). dashboardUnlocked is kept as a readable alias.
+  const authGateVerified = humanRoute.trim() !== ''
+  const dashboardUnlocked = authGateVerified
   const sessionScratch = useRef<Record<string, string>>({})
   const toastId = useRef(0)
   const selectedChainMeta = chains.find((c) => c.slug === selectedChain)
@@ -1273,33 +1274,6 @@ export default function App() {
                 <span className="sg-statusdot off" />
                 <span className="sg-statuslabel">Automatic threat monitoring</span>
                 <span className="sg-statustag">NOT ACTIVE YET</span>
-              </div>
-            </section>
-          ) : null}
-
-          {/* ---------- ADMIN TAB ---------- */}
-          {activeTab === 'admin' ? (
-            <section style={card} aria-label="Admin passkey generation">
-              <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Admin · K1-bound passkey</h2>
-              <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                Generate a K1-bound passkey from an admin key. This is an <strong>honest placeholder</strong> —
-                no credential is generated and the admin key is never transmitted.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                <div>
-                  <label style={label} htmlFor="admin-key">Admin key</label>
-                  <input id="admin-key" type="password" value={adminKey} onChange={(e) => setAdminKey(e.target.value)} placeholder="Session-only, never sent" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="admin-k1-address">K1 address to bind</label>
-                  <input id="admin-k1-address" value={adminK1} onChange={(e) => setAdminK1(e.target.value)} placeholder="0x…" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <Btn id="admin-generate-passkey" tone="cyan" onClick={generatePasskey}>Generate K1-bound passkey</Btn>
-              </div>
-              <div id="admin-status" style={{ marginTop: 12, fontSize: 13, color: 'var(--accent-secondary)' }} aria-live="polite">
-                {adminStatus}
               </div>
             </section>
           ) : null}
