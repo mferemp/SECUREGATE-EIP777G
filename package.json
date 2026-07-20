@@ -2,7 +2,7 @@
   "name": "securegate-eip777g-root",
   "private": true,
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=22"
   },
   "scripts": {
     "build": "npm --prefix frontend install && npm --prefix frontend run build",
