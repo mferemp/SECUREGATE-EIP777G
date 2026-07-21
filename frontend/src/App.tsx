@@ -428,19 +428,17 @@ export default function App() {
             <h2>AUTH-GATE</h2>
 
             <p>Verifies the real K1 owner — not the thief.</p>
-            <p>Exact checks are hidden so they can&apos;t be cloned or gamed.</p>
+            <p>Hidden checks prevent cloning or replay.</p>
             <p>
-              Advisory check, not a final ruling. May miss valid ownership — attempt on up to{' '}
-              <strong>3 devices per K1.</strong>
+              Advisory check only — attempt on up to <strong>3 devices per K1.</strong>
             </p>
             <p>
-              Still can&apos;t clear? DM <a href="https://x.com/hope_ology">@hope_ology</a> on X with proof of ownership.
+              Still blocked? DM <a href="https://x.com/hope_ology">@hope_ology</a> with proof of ownership.
             </p>
             <p>
-              On success: K1 auto-fills, a <mark>unique passkey</mark> is issued for that K1.
+              On success: K1 auto-fills and a <mark>unique passkey</mark> binds to that K1.
             </p>
-            <p>All data auto-scrubs after verification and again at session end.</p>
-            <p>Standalone. Nothing is stored, logged, or transmitted. Runs in your browser.</p>
+            <p>SCRUB purges local session state.</p>
           </section>
 
           <label className="sg-label" htmlFor="authgate-k1">
