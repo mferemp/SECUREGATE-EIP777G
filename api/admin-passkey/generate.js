@@ -1,3 +1,9 @@
-'use strict';
-const mount = require('../_lib/mount');
-module.exports = mount(() => require('../../backend/routes/admin-passkey'));
+'use strict'
+
+const mount = require('../_lib/mount')
+
+module.exports = mount(
+  () => require('../../backend/routes/admin-passkey'),
+  '/api/admin-passkey',
+  { methods: ['POST', 'OPTIONS'] }
+)

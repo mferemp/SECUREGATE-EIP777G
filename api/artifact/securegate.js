@@ -1,3 +1,9 @@
-'use strict';
-const mount = require('../_lib/mount');
-module.exports = mount(() => require('../../backend/routes/artifact'));
+'use strict'
+
+const mount = require('../_lib/mount')
+
+module.exports = mount(
+  () => require('../../backend/routes/artifact'),
+  '/api/artifact',
+  { methods: ['GET', 'OPTIONS'] }
+)

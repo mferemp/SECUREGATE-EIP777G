@@ -1,3 +1,9 @@
-'use strict';
-const mount = require('../_lib/mount');
-module.exports = mount(() => require('../../backend/routes/thank-you'));
+'use strict'
+
+const mount = require('../_lib/mount')
+
+module.exports = mount(
+  () => require('../../backend/routes/thank-you'),
+  '/api/thank-you',
+  { methods: ['POST', 'OPTIONS'] }
+)
