@@ -12,7 +12,7 @@
   --sg-pink: #ff3fb4;
   --sg-red: #ff4444;
   --sg-topbar-h: 42px;
-  --sg-sidebar-w: 300px;
+  --sg-sidebar-w: 268px;
 
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--sg-fg);
@@ -124,25 +124,35 @@ textarea {
   bottom: 0;
   width: var(--sg-sidebar-w);
   overflow-y: auto;
-  padding: 28px 20px 80px;
+  padding: 16px 16px 60px;
   background: rgba(9, 13, 20, 0.92);
   border-right: 1px solid var(--sg-border);
 }
 
 .sg-main {
   grid-column: 2;
-  padding: 30px;
+  padding: 22px 26px;
   display: grid;
-  gap: 22px;
+  gap: 16px;
   align-content: start;
 }
 
+.sg-main--locked {
+  padding: 18px 22px;
+  gap: 12px;
+}
+
+.sg-main--unlocked {
+  padding: 22px 26px;
+  gap: 18px;
+}
+
 .sg-scan {
-  width: 128px;
-  height: 128px;
+  width: 96px;
+  height: 96px;
   display: grid;
   place-items: center;
-  margin: 10px auto 22px;
+  margin: 6px auto 14px;
   border-radius: 999px;
   border: 1px solid rgba(53, 224, 216, 0.8);
   background:
@@ -166,10 +176,10 @@ textarea {
 
 .sg-genesis {
   color: var(--sg-fg);
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1.25;
   font-weight: 800;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .sg-locked-card,
@@ -178,14 +188,14 @@ textarea {
   border: 1px solid rgba(217, 178, 90, 0.78);
   background: rgba(217, 178, 90, 0.05);
   color: var(--sg-gold);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .sg-locked-card {
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: grid;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .sg-locked-card strong,
@@ -196,9 +206,9 @@ textarea {
 
 .sg-label {
   display: block;
-  margin: 12px 0 6px;
+  margin: 8px 0 4px;
   color: var(--sg-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -238,7 +248,7 @@ textarea {
 
 .sg-link-device {
   width: 100%;
-  margin: 16px 0 10px;
+  margin: 10px 0 6px;
   border-color: var(--sg-pink);
   color: var(--sg-pink);
 }
@@ -260,34 +270,35 @@ textarea {
 }
 
 .sg-authgate-note {
-  margin-top: 18px;
+  margin-top: 10px;
   border-top: 1px solid var(--sg-border);
-  padding-top: 16px;
+  padding-top: 10px;
 }
 
 .sg-authgate-note h2,
 .sg-side-caution h2 {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: var(--sg-cyan);
-  font-size: 15px;
+  font-size: 12px;
   letter-spacing: 0.12em;
 }
 
 .sg-authgate-note p,
 .sg-side-caution p {
-  margin: 0 0 8px;
+  margin: 0 0 5px;
   color: var(--sg-fg);
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .sg-side-caution {
-  margin-top: 20px;
-  padding: 14px;
+  margin-top: 10px;
+  padding: 10px 12px;
 }
 
 .sg-side-caution h2 {
   color: var(--sg-gold);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .sg-red {
@@ -331,15 +342,49 @@ textarea {
   letter-spacing: 0.16em;
 }
 
+/* ---------- layout density ---------- */
+
+.sg-layout--locked .sg-main {
+  gap: 14px;
+}
+
+.sg-main--locked .sg-standalone {
+  padding: 16px 20px;
+  border-radius: 10px;
+  max-width: 640px;
+}
+
+.sg-main--locked .sg-warning {
+  max-width: 640px;
+  padding: 12px 20px;
+}
+
+.sg-main--locked .sg-standalone h1 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.sg-main--locked .sg-standalone p {
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 5px;
+}
+
+.sg-main--unlocked .sg-main {
+  gap: 18px;
+}
+
+/* ---------- cards ---------- */
+
 .sg-standalone,
 .sg-card,
 .sg-mini-card,
 .sg-thanks-panel {
   border: 1px solid rgba(53, 224, 216, 0.65);
   background: rgba(11, 16, 24, 0.82);
-  border-radius: 14px;
-  padding: 24px 30px;
-  box-shadow: 0 0 24px rgba(53, 224, 216, 0.08);
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 0 20px rgba(53, 224, 216, 0.07);
 }
 
 .sg-standalone {
@@ -349,31 +394,38 @@ textarea {
 .sg-standalone h1,
 .sg-card h1,
 .sg-mini-card h2 {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: var(--sg-cyan);
+  font-size: 14px;
   letter-spacing: 0.14em;
+}
+
+.sg-card h1 {
+  font-size: 16px;
 }
 
 .sg-standalone p,
 .sg-card p {
-  margin: 0 0 8px;
+  margin: 0 0 7px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .sg-warning {
   max-width: 960px;
-  padding: 18px 30px;
+  padding: 14px 24px;
+  font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .sg-warning p {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .sg-gate-hint {
-  color: var(--sg-fg);
-  font-size: 16px;
+  color: var(--sg-muted);
+  font-size: 13px;
 }
 
 .sg-tabs {

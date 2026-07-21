@@ -289,7 +289,7 @@ export default function App() {
         <button className="sg-power" type="button" aria-label="Power">&#9211;</button>
       </header>
 
-      <div className="sg-layout">
+      <div className={`sg-layout ${dashboardUnlocked ? 'sg-layout--unlocked' : 'sg-layout--locked'}`}>
         <aside className="sg-sidebar" aria-label="Auth-Gate">
           <button
             id="scan-authenticator"
@@ -419,25 +419,26 @@ export default function App() {
           </div>
         </aside>
 
-        <main className="sg-main">
-          <section className="sg-standalone">
-            <h1>STANDALONE OPERATION</h1>
-            <p>This dashboard executes the authentication flow client-side.</p>
-            <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
-            <p>Cryptographic checks run in your browser.</p>
-            <p>Chain checks stay backend-routed for security.</p>
-            <p>Endpoint details never appear in the browser.</p>
-          </section>
-
-          <section className="sg-warning">
-            <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
-            <p>PLUS YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
-          </section>
-
+        <main className={`sg-main ${dashboardUnlocked ? 'sg-main--unlocked' : 'sg-main--locked'}`}>
           {!dashboardUnlocked && (
-            <p className="sg-gate-hint">
-              Complete the Auth-Gate with a verified K1-bound passkey to reveal the recovery workspace.
-            </p>
+            <>
+              <section className="sg-standalone">
+                <h1>STANDALONE OPERATION</h1>
+                <p>This dashboard executes the authentication flow client-side.</p>
+                <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
+                <p>Chain checks stay backend-routed for security.</p>
+                <p>Endpoint details never appear in the browser.</p>
+              </section>
+
+              <section className="sg-warning">
+                <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
+                <p>PLUS YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
+              </section>
+
+              <p className="sg-gate-hint">
+                Complete the Auth-Gate with a verified K1-bound passkey to reveal the recovery workspace.
+              </p>
+            </>
           )}
 
           {dashboardUnlocked && (
@@ -468,7 +469,7 @@ export default function App() {
 
               {activeTab === 'deployment' && (
                 <section className="sg-card">
-                  <h1>EIP-777G RECOVERY WORKSPACE</h1>
+                  <h1>EIP-777G DEPLOYMENT</h1>
                   <p>
                     Recovery mode is for an already-compromised K1. K2 and K3 are public addresses only.
                     Backend receives signedTx only.
@@ -574,7 +575,7 @@ export default function App() {
 
                   <div className="sg-progress-grid">
                     <div className="sg-mini-card">
-                      <h2>RECOVERY PROGRESS</h2>
+                      <h2>DEPLOYMENT PROGRESS</h2>
                       <div className="sg-progress-track">
                         <div
                           className="sg-progress-fill"
@@ -697,14 +698,15 @@ export default function App() {
           )}
         </main>
 
-        <footer className="sg-footer">
-          <div>THANK YOU</div>
-          <div>BUILT BY EMP</div>
-          <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
-            @hope_ology
-          </a>
-        </footer>
       </div>
+
+      <footer className="sg-footer">
+        <div>THANK YOU</div>
+        <div>BUILT BY EMP</div>
+        <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
+          @hope_ology
+        </a>
+      </footer>
     </div>
   )
 }
