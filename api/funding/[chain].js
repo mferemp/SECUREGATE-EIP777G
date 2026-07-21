@@ -5,5 +5,5 @@ const mount = require('../_lib/mount')
 module.exports = mount(
   () => require('../../backend/routes/funding'),
   '/api/funding',
-  { methods: ['POST', 'OPTIONS'] }
+  { methods: ['GET', 'OPTIONS'] }
 )
