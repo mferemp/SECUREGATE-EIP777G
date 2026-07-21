@@ -9,6 +9,8 @@ type Chain = {
   deploySupported: boolean
 }
 
+type DashboardTab = 'deployment' | 'protection' | 'status'
+
 const MAX_DEVICE_ATTEMPTS = 3
 
 const PROGRESS_STEPS = [
@@ -61,6 +63,8 @@ export default function App() {
   const [fundingStatus, setFundingStatus] = useState('')
   const [deployStatus, setDeployStatus] = useState('')
   const [activeStep, setActiveStep] = useState(-1)
+
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('deployment')
 
   const [thanksHandle, setThanksHandle] = useState('@hope_ology')
   const [thanksAddress, setThanksAddress] = useState('')
@@ -125,6 +129,7 @@ export default function App() {
 
     setThanksMessage('')
     setThanksStatus('')
+    setDashboardTab('deployment')
   }
 
   async function trace(kind: string) {
@@ -591,296 +596,340 @@ export default function App() {
             </section>
           ) : (
             <section className="sg-workspace-stage" aria-label="Unlocked EIP-777G dashboard">
-              <nav className="sg-tabs" aria-label="Dashboard sections">
-                <button type="button" onClick={() => jumpTo('deployment-panel')}>
+              <nav className="sg-tabs sg-tabs--dashboard" aria-label="Dashboard sections">
+                <button
+                  type="button"
+                  className={dashboardTab === 'deployment' ? 'active' : ''}
+                  onClick={() => setDashboardTab('deployment')}
+                >
                   Deployment
                 </button>
-                <button type="button" onClick={() => jumpTo('protection-panel')}>
+                <button
+                  type="button"
+                  className={dashboardTab === 'protection' ? 'active' : ''}
+                  onClick={() => setDashboardTab('protection')}
+                >
                   Protection
                 </button>
-                <button type="button" onClick={() => jumpTo('status-panel')}>
+                <button
+                  type="button"
+                  className={dashboardTab === 'status' ? 'active' : ''}
+                  onClick={() => setDashboardTab('status')}
+                >
                   Status
                 </button>
               </nav>
 
-              <section id="deployment-panel" className="sg-dash-card sg-deployment-card">
-                <h1>EIP-777G DEPLOYMENT</h1>
-                <div className="sg-deploy-intro">
-                  <p>
-                    Create &amp; fund a burner wallet for your deployment bundle — this is your{' '}
-                    <strong>Deployer.</strong> Enter the Deployer key and address in the assigned boxes below.
-                  </p>
-                  <p>
-                    Enter the K1 key assigned to the K1 address listed. Enter two clean public addresses in K2 and K3.{' '}
-                    <strong>Do not at any point share K2 or K3 keys.</strong>
-                  </p>
-                </div>
-
-                <ol className="sg-deploy-steps">
-                  <li>
-                    <span>1</span>
-                    Choose the initial chain to launch the EIP-777G contract on.
-                  </li>
-                  <li>
-                    <span>2</span>
-                    The fee calculator next to the chain selection box will tell you the funding needed to launch.
-                  </li>
-                  <li>
-                    <span>3</span>
-                    Once funded, build and sign the deployment transaction locally.
-                  </li>
-                  <li>
-                    <span>4</span>
-                    The progress bar will indicate the bundle was deployed and protection checks completed.
-                  </li>
-                  <li>
-                    <span>5</span>
-                    K2 authorizes transactions initiated by K1. Authorized transfer flow routes to K3 clean drop.
-                  </li>
-                </ol>
-              </section>
-
-              <section className="sg-dash-card sg-bundle-card">
-                <h2>DEPLOYMENT BUNDLE</h2>
-
-                <div className="sg-form-grid sg-form-grid--deploy">
-                  <label>
-                    <span>DEPLOYER ADDRESS</span>
-                    <input
-                      className="sg-input"
-                      value={deployerAddress}
-                      onChange={(event) => setDeployerAddress(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-
-                  <label>
-                    <span>DEPLOYER KEY</span>
-                    <input
-                      className="sg-input"
-                      type="password"
-                      value={deployerKey}
-                      onChange={(event) => setDeployerKey(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-
-                  <label>
-                    <span>K1 ADDRESS</span>
-                    <input
-                      className="sg-input sg-input--active"
-                      value={shortAddress(k1Address) || k1Address}
-                      readOnly
-                    />
-                  </label>
-
-                  <label>
-                    <span>K1 KEY</span>
-                    <input
-                      className="sg-input"
-                      type="password"
-                      value={k1SessionKey}
-                      onChange={(event) => setK1SessionKey(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-
-                  <label className="sg-form-wide">
-                    <span>K2 AUTH ADDRESS</span>
-                    <input
-                      className="sg-input"
-                      value={k2Address}
-                      onChange={(event) => setK2Address(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-
-                  <label className="sg-form-wide">
-                    <span>K3 CLEAN DROP ADDRESS</span>
-                    <input
-                      className="sg-input sg-input--active"
-                      value={k3Address}
-                      onChange={(event) => setK3Address(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-
-                  <label className="sg-form-wide">
-                    <span>SIGNED TX</span>
-                    <input
-                      className="sg-input"
-                      value={signedTx}
-                      onChange={(event) => setSignedTx(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <small>Backend receives signedTx only.</small>
-                  </label>
-                </div>
-
-                <div className="sg-bundle-actions">
-                  <select
-                    className="sg-input sg-chain-select"
-                    value={selectedChain}
-                    onChange={(event) => setSelectedChain(event.target.value)}
-                  >
-                    <option value="">EVM Bundle — All EVM Chains</option>
-                    {chains.map((chain) => (
-                      <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
-                        {chain.name} ({chain.nativeSymbol})
-                      </option>
-                    ))}
-                  </select>
-
-                  <button className="sg-cyan-action" type="button" onClick={calculateFunding}>
-                    CALCULATE FUNDING
-                  </button>
-
-                  <button className="sg-pink-action" type="button" onClick={lockGateIn}>
-                    LOCK GATE IN
-                  </button>
-                </div>
-
-                {(fundingStatus || deployStatus) && (
-                  <div className="sg-live-status" aria-live="polite">
-                    {fundingStatus && <p>{fundingStatus}</p>}
-                    {deployStatus && <p>{deployStatus}</p>}
-                  </div>
-                )}
-              </section>
-
-              <div className="sg-progress-grid">
-                <section className="sg-mini-card">
-                  <h2>DEPLOYMENT PROGRESS</h2>
-
-                  <div className="sg-progress-track">
-                    <div
-                      className="sg-progress-fill"
-                      style={{
-                        width:
-                          activeStep < 0
-                            ? '0%'
-                            : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`
-                      }}
-                    />
-                  </div>
-
-                  <div className="sg-progress-percent">
-                    {activeStep < 0
-                      ? '0%'
-                      : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`}
-                  </div>
-
-                  {PROGRESS_STEPS.map((step, index) => (
-                    <div className="sg-progress-line" key={step}>
-                      <span className={index <= activeStep ? 'on' : ''} />
-                      {step}
+              {dashboardTab === 'deployment' && (
+                <>
+                  <section id="deployment-panel" className="sg-dash-card sg-deployment-card">
+                    <h1>EIP-777G DEPLOYMENT</h1>
+                    <div className="sg-deploy-intro">
+                      <p>
+                        Create &amp; fund a burner wallet for your deployment bundle — this is your{' '}
+                        <strong>Deployer.</strong> Enter the Deployer key and address in the assigned boxes below.
+                      </p>
+                      <p>
+                        Enter the K1 key assigned to the K1 address listed. Enter two clean public addresses in K2 and K3.{' '}
+                        <strong>Do not at any point share your K2 or K3 keys.</strong>
+                      </p>
                     </div>
-                  ))}
+
+                    <ol className="sg-deploy-steps">
+                      <li>
+                        <span>1</span>
+                        <p>Choose the initial chain to launch the EIP-777G contract on.</p>
+                      </li>
+                      <li>
+                        <span>2</span>
+                        <p>
+                          The fee calculator next to the chain selection box will tell you the funding needed to launch
+                          the contract on that chain.
+                        </p>
+                      </li>
+                      <li>
+                        <span>3</span>
+                        <p>Fund the Deployer, then build and sign the deployment transaction locally.</p>
+                      </li>
+                      <li>
+                        <span>4</span>
+                        <p>The progress bar indicates the deployment bundle and protection checks.</p>
+                      </li>
+                      <li>
+                        <span>5</span>
+                        <p>
+                          Once EIP-777G has been deployed, K2 authorizes protected actions and permitted transfer flow
+                          routes to the K3 clean drop address.
+                        </p>
+                      </li>
+                    </ol>
+                  </section>
+
+                  <section className="sg-dash-card sg-bundle-card">
+                    <h2>DEPLOYMENT BUNDLE</h2>
+
+                    <div className="sg-form-grid sg-form-grid--deploy">
+                      <label>
+                        <span>DEPLOYER ADDRESS</span>
+                        <input
+                          className="sg-input"
+                          value={deployerAddress}
+                          onChange={(event) => setDeployerAddress(event.target.value)}
+                          placeholder="0x..."
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                      </label>
+
+                      <label>
+                        <span>DEPLOYER KEY</span>
+                        <input
+                          className="sg-input"
+                          type="password"
+                          value={deployerKey}
+                          onChange={(event) => setDeployerKey(event.target.value)}
+                          placeholder="0x..."
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                      </label>
+
+                      <label>
+                        <span>K1 ADDRESS</span>
+                        <input
+                          className="sg-input sg-input--active"
+                          value={k1Address}
+                          readOnly
+                        />
+                      </label>
+
+                      <label>
+                        <span>K1 KEY</span>
+                        <input
+                          className="sg-input"
+                          type="password"
+                          value={k1SessionKey}
+                          onChange={(event) => setK1SessionKey(event.target.value)}
+                          placeholder="session-only"
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                      </label>
+
+                      <label className="sg-form-wide">
+                        <span>K2 AUTH ADDRESS</span>
+                        <input
+                          className="sg-input"
+                          value={k2Address}
+                          onChange={(event) => setK2Address(event.target.value)}
+                          placeholder="0x..."
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                      </label>
+
+                      <label className="sg-form-wide">
+                        <span>K3 CLEAN DROP ADDRESS</span>
+                        <input
+                          className="sg-input sg-input--active"
+                          value={k3Address}
+                          onChange={(event) => setK3Address(event.target.value)}
+                          placeholder="0x..."
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                      </label>
+
+                      <label className="sg-form-full">
+                        <span>SIGNED TX</span>
+                        <input
+                          className="sg-input"
+                          value={signedTx}
+                          onChange={(event) => setSignedTx(event.target.value)}
+                          placeholder="0x..."
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                        <small>Backend receives signedTx only. No K2/K3 private keys. No seed. No mnemonic.</small>
+                      </label>
+                    </div>
+
+                    <div className="sg-bundle-actions">
+                      <select
+                        className="sg-input sg-chain-select"
+                        value={selectedChain}
+                        onChange={(event) => setSelectedChain(event.target.value)}
+                      >
+                        <option value="">EVM Bundle — All EVM Chains</option>
+                        {chains.map((chain) => (
+                          <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
+                            {chain.name} ({chain.nativeSymbol})
+                          </option>
+                        ))}
+                      </select>
+
+                      <button className="sg-cyan-action" type="button" onClick={calculateFunding}>
+                        CALCULATE FUNDING
+                      </button>
+
+                      <button className="sg-pink-action" type="button" onClick={lockGateIn}>
+                        LOCK GATE IN
+                      </button>
+                    </div>
+
+                    {(fundingStatus || deployStatus) && (
+                      <div className="sg-live-status" aria-live="polite">
+                        {fundingStatus && <p>{fundingStatus}</p>}
+                        {deployStatus && <p>{deployStatus}</p>}
+                      </div>
+                    )}
+                  </section>
+
+                  <div className="sg-progress-grid">
+                    <section className="sg-mini-card">
+                      <h2>DEPLOYMENT PROGRESS</h2>
+
+                      <div className="sg-progress-track">
+                        <div
+                          className="sg-progress-fill"
+                          style={{
+                            width:
+                              activeStep < 0
+                                ? '0%'
+                                : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`
+                          }}
+                        />
+                      </div>
+
+                      <div className="sg-progress-percent">
+                        {activeStep < 0
+                          ? '0%'
+                          : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`}
+                      </div>
+
+                      {PROGRESS_STEPS.map((step, index) => (
+                        <div className="sg-progress-line" key={step}>
+                          <span className={index <= activeStep ? 'on' : ''} />
+                          {step}
+                        </div>
+                      ))}
+                    </section>
+
+                    <section className="sg-mini-card">
+                      <h2>VERIFYING PROTECTION</h2>
+                      <p>Runs automatically after deployment.</p>
+                    </section>
+                  </div>
+
+                  <section className="sg-final-warning">
+                    <strong>&#9888;</strong>
+                    <p>
+                      All data auto-scrubs after verification and again at session end. SCRUB purges on demand.
+                      Standalone. Nothing is stored, logged, or transmitted from the browser.
+                    </p>
+                  </section>
+                </>
+              )}
+
+              {dashboardTab === 'protection' && (
+                <section id="protection-panel" className="sg-dash-card sg-protection-card">
+                  <h2>PROTECTION SETUP</h2>
+
+                  <div className="sg-protection-banner">
+                    <strong>For protection before compromise</strong> — configure EIP-777G protection here.
+                  </div>
+
+                  <div className="sg-form-grid sg-form-grid--protect">
+                    <label>
+                      <span>K1 ADDRESS <em>AUTO-FILLED</em></span>
+                      <input
+                        className="sg-input sg-input--active"
+                        value={k1Address}
+                        readOnly
+                      />
+                    </label>
+
+                    <label>
+                      <span>K2 AUTH ADDRESS</span>
+                      <input
+                        className="sg-input"
+                        value={k2Address}
+                        onChange={(event) => setK2Address(event.target.value)}
+                        placeholder="0x..."
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+
+                    <label>
+                      <span>K3 CLEAN DROP ADDRESS</span>
+                      <input
+                        className="sg-input"
+                        value={k3Address}
+                        onChange={(event) => setK3Address(event.target.value)}
+                        placeholder="0x..."
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="sg-bundle-actions">
+                    <select
+                      className="sg-input sg-chain-select"
+                      value={selectedChain}
+                      onChange={(event) => setSelectedChain(event.target.value)}
+                    >
+                      <option value="">EVM Bundle — All EVM Chains</option>
+                      {chains.map((chain) => (
+                        <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
+                          {chain.name} ({chain.nativeSymbol})
+                        </option>
+                      ))}
+                    </select>
+
+                    <button className="sg-cyan-action" type="button" onClick={calculateFunding}>
+                      CALCULATE FUNDING
+                    </button>
+
+                    <button className="sg-pink-action" type="button">
+                      AUTHORIZE PROTECTION
+                    </button>
+                  </div>
+
+                  <div className="sg-protection-note">
+                    To activate: open K1 in your wallet and authorize the signature prompt. K2 and K3 are public
+                    addresses only. Do not enter K2 or K3 private keys.
+                  </div>
                 </section>
+              )}
 
-                <section className="sg-mini-card">
-                  <h2>VERIFYING PROTECTION</h2>
-                  <p>Runs automatically after deploy.</p>
+              {dashboardTab === 'status' && (
+                <section id="status-panel" className="sg-dash-card sg-status-card">
+                  <h2>STATUS</h2>
+
+                  <div className="sg-status-row">
+                    <span className="on" />
+                    Auth-Gate route: {verifiedRoute}
+                  </div>
+                  <div className="sg-status-row">
+                    <span className="on" />
+                    Dashboard unlock: authGateVerified only
+                  </div>
+                  <div className="sg-status-row">
+                    <span className="on" />
+                    Backend deploy boundary: signedTx only
+                  </div>
+                  <div className="sg-status-row">
+                    <span className="on" />
+                    K2: public authorization address only
+                  </div>
+                  <div className="sg-status-row">
+                    <span className="on" />
+                    K3: immutable clean drop destination
+                  </div>
                 </section>
-              </div>
-
-              <section id="protection-panel" className="sg-dash-card sg-protection-card">
-                <h2>PROTECTION SETUP</h2>
-                <div className="sg-protection-banner">
-                  <strong>For protection before compromise</strong> — deploy EIP-777G here.
-                </div>
-
-                <div className="sg-form-grid sg-form-grid--protect">
-                  <label>
-                    <span>K1 ADDRESS <em>AUTO-FILLED</em></span>
-                    <input className="sg-input sg-input--active" value={shortAddress(k1Address) || k1Address} readOnly />
-                  </label>
-
-                  <label>
-                    <span>K2 ADDRESS</span>
-                    <input
-                      className="sg-input"
-                      value={k2Address}
-                      onChange={(event) => setK2Address(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-
-                  <label>
-                    <span>K3 ADDRESS</span>
-                    <input
-                      className="sg-input"
-                      value={k3Address}
-                      onChange={(event) => setK3Address(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-                </div>
-
-                <div className="sg-bundle-actions">
-                  <select
-                    className="sg-input sg-chain-select"
-                    value={selectedChain}
-                    onChange={(event) => setSelectedChain(event.target.value)}
-                  >
-                    <option value="">EVM Bundle — All EVM Chains</option>
-                    {chains.map((chain) => (
-                      <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
-                        {chain.name} ({chain.nativeSymbol})
-                      </option>
-                    ))}
-                  </select>
-
-                  <button className="sg-cyan-action" type="button" onClick={calculateFunding}>
-                    CALCULATE FUNDING
-                  </button>
-
-                  <button className="sg-pink-action" type="button">
-                    AUTHORIZE PROTECTION
-                  </button>
-                </div>
-
-                <div className="sg-protection-note">
-                  To activate: open K1 in your wallet and authorize the signature prompt. No K2 or K3 private key entry is required.
-                </div>
-              </section>
-
-              <section id="status-panel" className="sg-dash-card sg-status-card">
-                <h2>STATUS</h2>
-
-                <div className="sg-status-row">
-                  <span className="on" />
-                  Auth-Gate route: {verifiedRoute}
-                </div>
-                <div className="sg-status-row">
-                  <span className="on" />
-                  Backend boundary: signedTx only
-                </div>
-                <div className="sg-status-row">
-                  <span className="on" />
-                  K2: public authorization address only
-                </div>
-                <div className="sg-status-row">
-                  <span className="on" />
-                  K3: immutable clean drop destination
-                </div>
-              </section>
+              )}
             </section>
           )}
         </main>
