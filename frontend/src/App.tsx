@@ -346,18 +346,10 @@ export default function App() {
             </button>
           </div>
 
-          <div className="sg-attempts">
-            Device attempts: {Math.min(deviceAttempts, MAX_DEVICE_ATTEMPTS)}/{MAX_DEVICE_ATTEMPTS}
-          </div>
-
-          <div className="sg-auth-msg" aria-live="polite">{authMsg}</div>
-
           <section className="sg-authgate-note">
             <h2>AUTH-GATE</h2>
-            <p>Same device: press SCAN.</p>
-            <p>Different device: connect by USB first, then press LINK DEVICE.</p>
-            <p>Enter K1 before SCAN, LINK DEVICE, or PASSKEY.</p>
-            <p>SCRUB clears all local state at any time.</p>
+            <p>Same device: SCAN. Different device: USB then LINK DEVICE.</p>
+            <p>Enter K1 first. SCRUB clears all state.</p>
           </section>
 
           <section className="sg-side-caution" aria-label="Caution">
@@ -414,6 +406,11 @@ export default function App() {
             )}
           </section>
 
+          <div className="sg-attempts">
+            Attempts: {Math.min(deviceAttempts, MAX_DEVICE_ATTEMPTS)}/{MAX_DEVICE_ATTEMPTS}
+          </div>
+          <div className="sg-auth-msg" aria-live="polite">{authMsg}</div>
+
           <div className="sg-version">
             777G v1.0 · {dashboardUnlocked ? 'AUTHENTICATED' : 'SECURE'}
           </div>
@@ -424,8 +421,7 @@ export default function App() {
             <>
               <section className="sg-standalone">
                 <h1>STANDALONE OPERATION</h1>
-                <p>This dashboard executes the authentication flow client-side.</p>
-                <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
+                <p>Auth flow executes client-side. K1 data is not submitted to any operator or third party.</p>
                 <p>Chain checks stay backend-routed for security.</p>
                 <p>Endpoint details never appear in the browser.</p>
               </section>
