@@ -10,7 +10,8 @@
     "type-check": "npm --prefix frontend run type-check",
     "verify:root": "node scripts/verify-root-dev.cjs",
     "verify:auth-state": "node scripts/verify-auth-state-gate.cjs",
-    "verify": "npm run verify:root && npm run verify:auth-state && bash scripts/with-node24.sh node scripts/verify-design-fidelity.cjs && bash scripts/with-node24.sh node scripts/verify-thank-you-envelope.cjs && bash scripts/with-node24.sh node scripts/verify-authgate-passkey.cjs && bash scripts/with-node24.sh node scripts/verify-admin-passkey.cjs && bash scripts/with-node24.sh node scripts/verify-recovery-flow-ui.cjs && bash scripts/with-node24.sh node scripts/verify-funding-gas.cjs && bash scripts/with-node24.sh node scripts/verify-front-back-wiring.cjs && bash scripts/with-node24.sh node scripts/verify-csp.cjs",
+    "verify:backend-wiring": "node scripts/verify-backend-wiring.cjs",
+    "verify": "npm run verify:root && npm run verify:auth-state && npm run verify:backend-wiring",
     "build:proof": "npm run verify && npm run type-check && npm run build"
   },
   "dependencies": {

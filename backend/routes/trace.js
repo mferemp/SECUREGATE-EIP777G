@@ -1,43 +1,22 @@
-'use strict';
+'use strict'
 
-// /api/trace — device breadcrumb + ping (S07).
-//
-//   POST /api/trace/ping     — a device heartbeat (repeated scans notice).
-//   POST /api/trace/download — a dashboard-download breadcrumb (repeated pulls).
-//
-// The request supplies a coarse `subject` (e.g. a K1 bucket + device marker). It
-// is reduced to an opaque trace key here and dropped; we never persist raw
-// fingerprints, keys, seeds, or markers. Both endpoints ALSO pass through the
-// anti-abuse limiter so repetition is throttled, but a breadcrumb never blocks a
-// legitimate recovery — it is a coarse signal only.
+const express = require('express')
+const crypto = require('crypto')
 
-const express = require('express');
-const { record } = require('../lib/anti-abuse-kv');
-const { bucketKey } = require('../lib/trace-key');
-const { recordBreadcrumb } = require('../lib/trace-store');
+const router = express.Router()
 
-const router = express.Router();
-
-async function handle(kind, action, req, res) {
-  const subject = (req.body && req.body.subject) || '';
-  const tKey = bucketKey(kind, subject);
-  try {
-    const limit = await record(action, tKey);
-    const crumb = await recordBreadcrumb(kind, tKey);
-    return res.json({
-      kind,
-      allowed: limit.allowed,
-      remaining: Math.max(0, limit.max - limit.count),
-      repeatCount: crumb.count,
-      flagged: crumb.flagged,
-      durable: crumb.durable,
-    });
-  } catch (_) {
-    return res.status(500).json({ error: 'could not record breadcrumb' });
-  }
+function hashSubject(value) {
+  return crypto
+    .createHash('sha256')
+    .update(String(value || 'anon').toLowerCase())
+    .digest('hex')
+    .slice(0, 24)
 }
 
-router.post('/ping', (req, res) => handle('ping', 'dashboard_ping', req, res));
-router.post('/download', (req, res) => handle('download', 'dashboard_download', req, res));
+router.post('/:kind', async (req, res) => {
+  const kind = String(req.params.kind || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40) || 'unknown'
+  const subjectHash = hashSubject((req.body && (req.body.k1 || req.body.subject)) || 'anon')
+  return res.json({ ok: true, kind, subjectHash, ts: Date.now() })
+})
 
-module.exports = router;
+module.exports = router

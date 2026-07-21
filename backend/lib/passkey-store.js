@@ -1,62 +1,97 @@
-'use strict';
+'use strict'
 
-// passkey-store.js — K1-bound passkey registry (S08).
-//
-// Canonical rules (owner corrections):
-//   * Passkeys are bound to K1, NOT to a chain (one passkey per K1, all chains).
-//   * The raw passkey is NEVER stored. We store only a salted HMAC digest, so the
-//     store cannot reveal or replay a passkey even if dumped.
-//   * This module never unlocks execution by itself — a verified passkey is a
-//     human-route access signal; K2's EIP-712 signature is still what authorizes
-//     an intent. (Enforced client-side by placeholderGates.canExecuteIntent.)
+const crypto = require('crypto')
 
-const crypto = require('crypto');
-const { createKv } = require('./kv');
+const PREFIX = 'sgpk'
 
-const kv = createKv('passkey');
-
-function pepper() {
-  return process.env.PASSKEY_PEPPER || process.env.ABUSE_TRACE_PEPPER || ProcessSalt.value;
-}
-const ProcessSalt = { value: crypto.randomBytes(32).toString('hex') };
-
-const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
-function normK1(k1) {
-  return typeof k1 === 'string' && ADDR_RE.test(k1.trim()) ? k1.trim().toLowerCase() : null;
+function normalizeK1(k1) {
+  if (typeof k1 !== 'string') return ''
+  const trimmed = k1.trim()
+  if (!/^0x[0-9a-fA-F]{40}$/.test(trimmed)) return ''
+  return trimmed.toLowerCase()
 }
 
-// Digest a raw passkey to an opaque, non-reversible value bound to its K1.
-function digest(k1n, rawPasskey) {
-  return crypto
-    .createHmac('sha256', pepper())
-    .update(`sg-passkey:${k1n}:${String(rawPasskey)}`)
-    .digest('hex');
+function secret() {
+  return process.env.SECUREGATE_PASSKEY_PEPPER || process.env.SECUREGATE_ADMIN_KEY || ''
 }
 
-// Register (or overwrite) the K1-bound passkey. Returns { registered, k1 } and
-// stores ONLY the digest.
-async function register(k1, rawPasskey) {
-  const k1n = normK1(k1);
-  if (!k1n) throw new Error('valid K1 address required');
-  if (typeof rawPasskey !== 'string' || rawPasskey.length < 6) {
-    throw new Error('passkey too short');
+function base64url(input) {
+  return Buffer.from(input).toString('base64url')
+}
+
+function unbase64url(input) {
+  return Buffer.from(input, 'base64url').toString('utf8')
+}
+
+function sign(payload) {
+  const key = secret()
+  if (!key) return ''
+  return crypto.createHmac('sha256', key).update(payload).digest('base64url')
+}
+
+function safeEqual(a, b) {
+  const aa = Buffer.from(String(a))
+  const bb = Buffer.from(String(b))
+  if (aa.length !== bb.length) return false
+  return crypto.timingSafeEqual(aa, bb)
+}
+
+async function mint(k1) {
+  const boundK1 = normalizeK1(k1)
+  if (!boundK1) return { error: 'valid k1 required' }
+  if (!secret()) {
+    return { disabled: true, reason: 'Passkey minting is not configured on this deployment.' }
   }
-  await kv.set(k1n, digest(k1n, rawPasskey));
-  return { registered: true, k1: k1n };
+  const payload = base64url(JSON.stringify({
+    v: 1,
+    k1: boundK1,
+    nonce: crypto.randomBytes(16).toString('hex'),
+    iat: Date.now()
+  }))
+  return {
+    passkey: `${PREFIX}.${payload}.${sign(payload)}`,
+    boundK1,
+    issuedAt: Date.now()
+  }
 }
 
-// Verify a candidate passkey against the stored K1-bound digest. Constant-time
-// compare; returns { verified } only — never the stored digest.
-async function verify(k1, rawPasskey) {
-  const k1n = normK1(k1);
-  if (!k1n) return { verified: false, reason: 'invalid K1' };
-  const stored = await kv.get(k1n);
-  if (!stored) return { verified: false, reason: 'no passkey registered for K1' };
-  const cand = digest(k1n, rawPasskey);
-  const a = Buffer.from(String(stored));
-  const b = Buffer.from(cand);
-  const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
-  return { verified: ok, reason: ok ? 'ok' : 'mismatch' };
+async function verify(k1, passkey) {
+  const expectedK1 = normalizeK1(k1)
+  if (!expectedK1) return { verified: false, reason: 'valid k1 required' }
+  if (typeof passkey !== 'string') return { verified: false, reason: 'passkey required' }
+
+  const parts = passkey.trim().split('.')
+  if (parts.length !== 3 || parts[0] !== PREFIX) {
+    return { verified: false, reason: 'invalid passkey format' }
+  }
+
+  const [, payload, sig] = parts
+  const expectedSig = sign(payload)
+  if (!expectedSig || !safeEqual(sig, expectedSig)) {
+    return { verified: false, reason: 'passkey signature invalid' }
+  }
+
+  let decoded
+  try {
+    decoded = JSON.parse(unbase64url(payload))
+  } catch {
+    return { verified: false, reason: 'passkey payload invalid' }
+  }
+
+  if (decoded.v !== 1 || decoded.k1 !== expectedK1) {
+    return { verified: false, reason: 'passkey is not bound to this K1' }
+  }
+
+  return { verified: true, boundK1: expectedK1, issuedAt: decoded.iat || null }
 }
 
-module.exports = { register, verify, _digest: digest, _normK1: normK1, _kv: kv };
+async function register(k1) {
+  const normalized = normalizeK1(k1)
+  if (!normalized) return { error: 'valid k1 required' }
+  return {
+    disabled: true,
+    reason: "Self-registration is disabled. Use the admin \u26ab-' human route."
+  }
+}
+
+module.exports = { mint, verify, register, normalizeK1 }

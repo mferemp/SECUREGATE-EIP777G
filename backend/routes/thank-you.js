@@ -4,7 +4,7 @@
 //   GET  /api/thank-you/config — returns the handle + optional copy address only.
 //   POST /api/thank-you/send   — sends a note via X if configured, else disabled.
 //
-// The thank-you address is thank-you-only copy data. It is NOT K3, NOT a fallback
+// The thank-you address is thank-you-only copy data. It is NOT a fallback
 // route, NOT a deploy parameter, and NOT part of any proof logic.
 
 const express = require('express');
@@ -13,12 +13,11 @@ const router = express.Router();
 
 router.get('/config', (_req, res) => {
   res.json({
-    handle: process.env.THANK_YOU_HANDLE || '@hope_ology',
-    network: process.env.THANK_YOU_NETWORK || 'EVM',
-    // Optional copy-only address; empty string when unset.
-    copyAddress: process.env.THANK_YOU_COPY_ADDRESS || '',
-  });
-});
+    handle: process.env.THANKYOU_HANDLE || '@hope_ology',
+    network: process.env.THANKYOU_NETWORK || 'EVM',
+    copyAddress: process.env.THANKYOU_ADDRESS || ''
+  })
+})
 
 router.post('/send', async (req, res) => {
   const token = process.env.X_OAUTH2_ACCESS_TOKEN;
