@@ -591,6 +591,14 @@ select:focus {
   text-decoration: none;
 }
 
+.sg-built-by {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: var(--sg-gold);
+  opacity: 0.9;
+}
+
 .sg-thankyou-button {
   pointer-events: auto;
   border: 1px solid var(--sg-cyan);

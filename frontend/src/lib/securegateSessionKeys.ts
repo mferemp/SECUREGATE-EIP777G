@@ -10,7 +10,22 @@
 // it. This module keeps no module-level key storage of its own.
 
 import { ethers } from 'ethers'
-import { buildBroadcastBody, assertNoKeyMaterial } from './securegateTxBuilder'
+
+// Inline helpers (previously in securegateTxBuilder — that file is removed as it
+// contained ABI function names that must not appear in bundled frontend source).
+function buildBroadcastBody(signedTx: string): { signedTx: string } {
+  const v = (signedTx || '').trim()
+  if (!/^0x[0-9a-fA-F]{100,}$/.test(v)) throw new Error('signedTx required')
+  return { signedTx: v }
+}
+function assertNoKeyMaterial(body: Record<string, unknown>): void {
+  const forbidden = new Set(['privateKey','deployerKey','k1Key','k2Key','k3Key','mnemonic','seed'])
+  for (const k of Object.keys(body)) {
+    if (forbidden.has(k) || /priv|secret|mnemonic|seed|passphrase/i.test(k)) {
+      throw new Error(`forbidden field in broadcast body: ${k}`)
+    }
+  }
+}
 
 const PRIVKEY_RE = /^0x[0-9a-fA-F]{64}$/
 

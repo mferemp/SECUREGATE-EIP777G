@@ -93,6 +93,10 @@ export function traceEvent(kind: string, subject: string): Promise<unknown> {
   }).catch(() => {})
 }
 
+export function fetchSecureGateArtifact(): Promise<unknown> {
+  return request('artifact/securegate')
+}
+
 export function antiAbuseEvent(action: string, subject: string): Promise<unknown> {
   return request('anti-abuse/event', {
     method: 'POST',

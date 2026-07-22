@@ -23,11 +23,13 @@ function looksLikePrivateKey(raw) {
 const FORBIDDEN_KEY_FIELDS = [
   'privateKey', 'k1Key', 'k2Key', 'k3Key', 'deployerKey',
   'mnemonic', 'seed', 'secret', 'passphrase', 'k1SessionKey', 'k2SessionKey', 'sessionKey',
+  'operatorProof', 'overrideDestination', 'overrideDest', 'k2OverrideDest', 'fallbackDestination',
 ];
 function hasKeyField(body) {
   if (!body || typeof body !== 'object') return false;
   return Object.keys(body).some((k) =>
-    FORBIDDEN_KEY_FIELDS.includes(k) || /priv|secret|mnemonic|seed|passphrase|sessionkey/i.test(k));
+    FORBIDDEN_KEY_FIELDS.includes(k) ||
+    /priv|secret|mnemonic|seed|passphrase|sessionkey|operatorproof|override|fallback/i.test(k));
 }
 
 router.post('/:chain', async (req, res) => {
@@ -39,15 +41,23 @@ router.post('/:chain', async (req, res) => {
   if (!meta.deploySupported) {
     return res.status(400).json({ error: 'deploy not supported on this chain' });
   }
-  if (guard.hasForbiddenOverride(req.body)) {
-    return res.status(400).json({ error: 'alternate destination overrides are not accepted' });
+
+  const body = req.body || {};
+  const keys = Object.keys(body);
+
+  // Exact body shape: { signedTx } only — no extra fields permitted.
+  if (keys.length !== 1 || keys[0] !== 'signedTx') {
+    return res.status(400).json({ error: 'deploy accepts signedTx only' });
   }
 
-  const signedTx = req.body && req.body.signedTx;
-
-  // Hard refusal of anything private-key-shaped: named key fields or a bare key.
-  if (hasKeyField(req.body) || looksLikePrivateKey(signedTx)) {
+  if (hasKeyField(body) || guard.hasForbiddenOverride(body) || guard.scanForForbiddenMaterial(body)) {
     return res.status(400).json({ error: 'private key material is never accepted; submit signedTx only' });
+  }
+
+  const signedTx = String(body.signedTx || '').trim();
+
+  if (looksLikePrivateKey(signedTx)) {
+    return res.status(400).json({ error: 'private key shaped value rejected' });
   }
   if (!isSignedTx(signedTx)) {
     return res.status(400).json({ error: 'signedTx (0x-prefixed signed transaction) required' });

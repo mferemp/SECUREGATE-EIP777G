@@ -20,7 +20,18 @@
 // framework-free and directly testable under Node 24.
 
 import { ethers } from 'ethers'
-import type { SignTypedDataFn, TypedData } from './securegateK2Authorization'
+// Inline types (previously in securegateK2Authorization — that file is removed
+// from frontend/src per spec; types are inlined here).
+export type TypedData = {
+  domain: { name: string; version: string; chainId: bigint | number; verifyingContract: string }
+  types: Record<string, Array<{ name: string; type: string }>>
+  message: Record<string, unknown>
+}
+export type SignTypedDataFn = (
+  domain: TypedData['domain'],
+  types: TypedData['types'],
+  message: TypedData['message'],
+) => Promise<string>
 
 export const K2_NOT_CONNECTED = 'K2 signer not connected'
 
@@ -102,10 +113,10 @@ export function injectedSignTypedData(
       primaryType: 'AuthorizeIntent',
       message: {
         intentHash: message.intentHash,
-        deadline: message.deadline.toString(),
+        deadline: String(message.deadline as bigint | number | string),
         nonce: message.nonce,
         k3: message.k3,
-        chainId: message.chainId.toString(),
+        chainId: String(message.chainId as bigint | number | string),
         verifyingContract: message.verifyingContract,
       },
     }

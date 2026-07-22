@@ -130,7 +130,7 @@ export default function App() {
 
     try {
       await traceEvent(kind === 'scan' ? 'scan' : 'link-device', k1Address)
-      await antiAbuseEvent(kind === 'scan' ? 'scan' : 'link-device', k1Address)
+      await antiAbuseEvent(kind === 'scan' ? 'auth_gate_scan' : 'auth_gate_link_device', k1Address)
     } catch {
       // non-blocking
     }
@@ -792,6 +792,8 @@ export default function App() {
             {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
           </div>
         )}
+
+        <div className="sg-built-by">BUILT BY EMP</div>
 
         <div>
           <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
