@@ -28,9 +28,6 @@ import { deriveAddress, signLocally, broadcastBody } from './lib/securegateSessi
 import {
   PENDING_PLACEHOLDER_LAYERS,
   attemptScan,
-  attemptLinkDevice,
-  enterPasskey,
-  generateAdminPasskey,
   canExecuteIntent,
 } from './lib/placeholderGates'
 import { PROGRESS_LABELS as UI_PROGRESS_LABELS, HUMAN_ROUTE_MSG as UI_HUMAN_ROUTE_MSG } from './lib/uiLabels'
@@ -61,21 +58,11 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'status', label: 'Status' },
 ]
 
-// Progress labels + human-route copy come from the single source of truth in
-// ./lib/uiLabels (proven by verify-ui-baseline.cjs). Re-bound locally so existing
-// references keep working.
 const PROGRESS_LABELS = UI_PROGRESS_LABELS
-
 const MAX_DEVICE_ATTEMPTS = 3
-
-// Honest, non-faked placeholder statuses. The gate-specific copy is owned by
-// ./lib/placeholderGates (single source of truth, proven by verify-placeholder-gates.cjs);
-// only the local "human recovery route" fallback string lives here.
 const HUMAN_ROUTE_MSG = UI_HUMAN_ROUTE_MSG
 
-// Layers shown in the Status tab: what is connected vs an honest "not yet".
 const CONNECTED_LAYERS = ['Chain registry (/api/chains)', 'Funding estimate (/api/funding)', 'Anti-abuse events (/api/anti-abuse)', 'Thank-you envelope (/api/thank-you)', 'Browser deploy builder (signedTx)', 'Browser K1 action builder (signedTx)', 'Browser K2 authorization builder (EIP-712, signedTx)']
-// The pending placeholder layers come straight from the honesty-gate library.
 const PENDING_LAYERS = PENDING_PLACEHOLDER_LAYERS
 
 const inputStyle: React.CSSProperties = {
@@ -137,8 +124,12 @@ export default function App() {
   const [authMsg, setAuthMsg] = useState('')
   const [humanRoute, setHumanRoute] = useState('')
   const [passkey, setPasskey] = useState('')
+  const [passkeyLaneReady, setPasskeyLaneReady] = useState(false)
+  const [passkeyLaneReason, setPasskeyLaneReason] = useState('')
+  const [authGateVerified, setAuthGateVerified] = useState(false)
+  const [verifiedRoute, setVerifiedRoute] = useState('none')
 
-  // Recovery form — session-only sensitive values. NEVER sent to the backend.
+  // Recovery form
   const [k1SessionKey, setK1SessionKey] = useState('')
   const [deployerBurnerKey, setDeployerBurnerKey] = useState('')
   const [k2Address, setK2Address] = useState('')
@@ -147,7 +138,7 @@ export default function App() {
   const [deployStatus, setDeployStatus] = useState('')
   const [activeStep, setActiveStep] = useState(-1)
 
-  // Browser K1 action builder — build + locally sign queue* txs (session-only key).
+  // K1 action builder
   const [gateAddress, setGateAddress] = useState('')
   const [actionKind, setActionKind] = useState<'ERC20' | 'ERC721' | 'ERC1155'>('ERC20')
   const [actionToken, setActionToken] = useState('')
@@ -155,9 +146,7 @@ export default function App() {
   const [actionTokenId, setActionTokenId] = useState('')
   const [actionStatus, setActionStatus] = useState('')
 
-  // K2 authorization (EIP-712) — session-only. K2 private key is NEVER entered
-  // here: the K2 wallet signs the typed data externally and the signature is
-  // pasted back for client-side verification before authorizeIntent is built.
+  // K2 authorization
   const [lastIntent, setLastIntent] = useState<null | {
     assetType: 'ERC20' | 'ERC721' | 'ERC1155'
     token: string
@@ -172,27 +161,29 @@ export default function App() {
   const [authK2Signature, setAuthK2Signature] = useState('')
   const [authVerified, setAuthVerified] = useState(false)
   const [authStatus, setAuthStatus] = useState('')
-  // Injected-wallet (EIP-1193) K2 signing — the K2 wallet signs in-wallet; the
-  // key never enters this app. Pasted-signature flow remains the fallback.
   const [k2WalletAddress, setK2WalletAddress] = useState('')
 
-  // Admin passkey generation (honest placeholder only)
+  // Admin passkey generation
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false)
   const [adminKey, setAdminKey] = useState('')
   const [adminK1, setAdminK1] = useState('')
   const [adminStatus, setAdminStatus] = useState('')
+  const [adminPasskeyOut, setAdminPasskeyOut] = useState('')
+  const [adminBusy, setAdminBusy] = useState(false)
 
   // Thank-you envelope
   const [thanksAddress, setThanksAddress] = useState('')
   const [thanksHandle, setThanksHandle] = useState('@hope_ology')
   const [thanksMessage, setThanksMessage] = useState('')
   const [thanksStatus, setThanksStatus] = useState('')
+  const [thanksOpen, setThanksOpen] = useState(false)
+  const [thanksSending, setThanksSending] = useState(false)
+
+  const thanksTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const devicesLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
-  // The recovery/protection/admin/status workspace is revealed only AFTER the
-  // Auth-Gate resolves (a verified K1-bound passkey, or the human-fallback
-  // route after repeated device failures). Until then the landing view is the
-  // STANDALONE OPERATION canvas — the tabbed workspace is never the landing.
-  const dashboardUnlocked = humanRoute.trim() !== ''
+  const dashboardUnlocked = authGateVerified
+  const hasThankYouEvmAddress = Boolean(thanksAddress)
   const sessionScratch = useRef<Record<string, string>>({})
   const toastId = useRef(0)
   const selectedChainMeta = chains.find((c) => c.slug === selectedChain)
@@ -230,42 +221,357 @@ export default function App() {
     }
   }
 
-  // SCAN / LINK DEVICE are honest placeholders: they route through the honesty
-  // gates, which structurally cannot return a verified/unlocking result.
+  async function traceEvent(kind: string, k1: string) {
+    try {
+      await fetch(api(`trace/${kind}`), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ k1 }),
+      })
+    } catch {
+      // non-blocking
+    }
+  }
+
+  // ── SCRUB: clears all user-entered info except K1 ──────────────────────
+  function scrubInputsKeepK1() {
+    const keepK1 = k1Address
+
+    setPasskey('')
+    setAuthMsg('Scrub complete. K1 retained.')
+    setPasskeyLaneReady(false)
+    setPasskeyLaneReason('')
+
+    setAdminKey('')
+    setAdminK1('')
+    setAdminStatus('')
+    setAdminPasskeyOut('')
+    setAdminBusy(false)
+
+    setSelectedChain('')
+    setDeployerBurnerKey('')
+    setK1SessionKey('')
+    setK2Address('')
+    setK3Address('')
+    setSignedTx('')
+    setShowDeployerKey(false)
+    setShowK1Key(false)
+
+    setDeployStatus('')
+    setFundingPanel('')
+    setActiveStep(-1)
+    setGateAddress('')
+    setDeploymentTxHash('')
+    setProtectionSignedTx('')
+    setProtectionStatus('')
+    setRuntimeStatus('')
+    setArtifactStatus('')
+
+    setThanksMessage('')
+    setThanksStatus('')
+    setThanksOpen(false)
+    setThanksSending(false)
+
+    setActionToken('')
+    setActionAmount('')
+    setActionTokenId('')
+    setActionStatus('')
+    setLastIntent(null)
+    setAuthIntentHash('')
+    setAuthTypedData('')
+    setAuthK2Expected('')
+    setAuthK2Signature('')
+    setAuthVerified(false)
+    setK2WalletAddress('')
+    setAuthStatus('')
+    sessionScratch.current = {}
+
+    setK1Address(keepK1)
+    pushToast('info', 'Session-only fields scrubbed. K1 retained.')
+  }
+
+  // ── POWER: clears everything including K1, locks to Auth-Gate ──────────
+  function powerReset() {
+    setAuthGateVerified(false)
+    setVerifiedRoute('none')
+    setHumanRoute('')
+    setActiveTab('recovery')
+
+    setK1Address('')
+    setPasskey('')
+    setAuthMsg('')
+    setDeviceAttempts(0)
+    setPasskeyLaneReady(false)
+    setPasskeyLaneReason('')
+
+    setAdminPanelOpen(false)
+    setAdminKey('')
+    setAdminK1('')
+    setAdminStatus('')
+    setAdminPasskeyOut('')
+    setAdminBusy(false)
+
+    setSelectedChain('')
+    setDeployerBurnerKey('')
+    setK1SessionKey('')
+    setK2Address('')
+    setK3Address('')
+
+    setDeployStatus('')
+    setFundingPanel('')
+    setActiveStep(-1)
+    setGateAddress('')
+
+    setActionToken('')
+    setActionAmount('')
+    setActionTokenId('')
+    setActionStatus('')
+    setLastIntent(null)
+    setAuthIntentHash('')
+    setAuthTypedData('')
+    setAuthK2Expected('')
+    setAuthK2Signature('')
+    setAuthVerified(false)
+    setK2WalletAddress('')
+    setAuthStatus('')
+
+    setThanksMessage('')
+    setThanksStatus('')
+    setThanksOpen(false)
+    setThanksSending(false)
+    sessionScratch.current = {}
+    pushToast('info', 'Power reset. Dashboard locked to Auth-Gate.')
+  }
+
+  // Stub setters for fields that may not exist yet — kept for scrub safety
+  function setSignedTx(_v: string) {}
+  function setShowDeployerKey(_v: boolean) {}
+  function setShowK1Key(_v: boolean) {}
+  function setDeploymentTxHash(_v: string) {}
+  function setProtectionSignedTx(_v: string) {}
+  function setProtectionStatus(_v: string) {}
+  function setRuntimeStatus(_v: string) {}
+  function setArtifactStatus(_v: string) {}
+
+  // ── DEVICE ATTEMPT (honest WebUSB) ─────────────────────────────────────
   async function deviceAttempt(kind: 'scan' | 'link') {
-    if (devicesLocked) return
-    const action = kind === 'scan' ? 'auth_gate_attempt' : 'link_device_attempt'
-    await recordAbuse(action, k1Address || 'anon')
+    if (!ethers.isAddress(k1Address)) {
+      setAuthMsg('Enter a valid K1 address before using SCAN, LINK DEVICE, or PASSKEY.')
+      return
+    }
+
+    if (devicesLocked) {
+      setAuthMsg('Device checks are exhausted. PASSKEY remains open. Dashboard remains locked.')
+      return
+    }
+
+    setAuthGateVerified(false)
+    setVerifiedRoute('none')
+
+    if (kind === 'link') {
+      const usb = (
+        navigator as Navigator & {
+          usb?: {
+            requestDevice: (options: { filters: unknown[] }) => Promise<unknown>
+          }
+        }
+      ).usb
+
+      if (!usb || typeof usb.requestDevice !== 'function') {
+        setAuthMsg('USB link is not supported in this browser. Use SCAN or admin-generated passkey.')
+        try {
+          await traceEvent('link-device-unsupported', k1Address)
+          await recordAbuse('auth_gate_link_device_unsupported', k1Address)
+        } catch {
+          // non-blocking
+        }
+        return
+      }
+
+      try {
+        await usb.requestDevice({ filters: [] })
+      } catch {
+        setAuthMsg('USB link was cancelled or unavailable. Dashboard remains locked.')
+        try {
+          await traceEvent('link-device-cancelled', k1Address)
+          await recordAbuse('auth_gate_link_device_cancelled', k1Address)
+        } catch {
+          // non-blocking
+        }
+        return
+      }
+    }
+
+    if (kind === 'scan') {
+      const result = attemptScan()
+      void pingDevice(k1Address)
+      setAuthMsg(result.message)
+      pushToast('warn', result.message)
+    }
+
+    try {
+      await traceEvent(kind === 'scan' ? 'scan' : 'link-device', k1Address)
+      await recordAbuse(kind === 'scan' ? 'auth_gate_scan' : 'auth_gate_link_device', k1Address)
+    } catch {
+      // non-blocking
+    }
+
     const next = deviceAttempts + 1
     setDeviceAttempts(next)
-    const result = kind === 'scan' ? attemptScan() : attemptLinkDevice()
-    // result.verified is the literal false — nothing here can unlock the gate.
-    // Leave a coarse device breadcrumb so repeated scans are noticed (no raw
-    // fingerprint leaves the browser).
-    void pingDevice(k1Address || 'anon')
-    setAuthMsg(result.message)
-    pushToast('warn', result.message)
+
+    setPasskeyLaneReady(true)
+    setPasskeyLaneReason(kind === 'scan' ? 'scan' : 'link-device')
+
     if (next >= MAX_DEVICE_ATTEMPTS) {
+      setAuthMsg('Device checks exhausted. Passkey lane remains open for this K1.')
       setHumanRoute(HUMAN_ROUTE_MSG)
       pushToast('warn', 'Device checks disabled for this session.')
+      return
     }
+
+    setAuthMsg(
+      kind === 'scan'
+        ? 'K1 scan breadcrumb recorded. Passkey lane opened. PASSKEY + ENTER is still required.'
+        : 'USB link breadcrumb recorded. Passkey lane opened. PASSKEY + ENTER is still required.',
+    )
   }
 
   async function passkeyEnter() {
     await recordAbuse('passkey_verify', k1Address || 'anon')
-    // Honest local placeholder status (never verifies on its own)...
-    const result = enterPasskey()
-    setAuthMsg(result.message)
-    pushToast('warn', result.message)
-    // ...plus the real K1-bound passkey check against the backend lane. A verified
-    // passkey is a human-route access signal only — it never authorizes an intent.
     if (passkey.trim() && k1Address.trim()) {
       const remote = await verifyPasskey(k1Address, passkey)
       if (remote.verified) {
-        setHumanRoute('Passkey verified for this K1 — human recovery route unlocked.')
+        setAuthGateVerified(true)
+        setVerifiedRoute('passkey')
+        setHumanRoute('Passkey verified for this K1 — dashboard unlocked.')
         pushToast('info', 'Passkey verified for this K1.')
+      } else {
+        setAuthMsg('Passkey not verified. Dashboard remains locked.')
+        pushToast('warn', 'Passkey check failed.')
       }
+    } else {
+      setAuthMsg('Enter K1 address and passkey before pressing ENTER.')
     }
+  }
+
+  // ── ADMIN PASSKEY GENERATION ────────────────────────────────────────────
+  async function generateAdminPasskeyAction() {
+    const targetK1 = (adminK1 || k1Address).trim().toLowerCase()
+
+    if (!adminKey.trim()) {
+      setAdminStatus('Admin pass phrase required.')
+      return
+    }
+
+    if (!ethers.isAddress(targetK1)) {
+      setAdminStatus('Valid K1 address required.')
+      return
+    }
+
+    setAdminBusy(true)
+    setAdminStatus('Checking admin pass phrase...')
+
+    try {
+      const result = await generateAdminPasskeyRemote(adminKey.trim(), targetK1)
+
+      if (result.passkey) {
+        setK1Address(targetK1)
+        setAdminK1(targetK1)
+        setPasskey(result.passkey)
+        setAdminPasskeyOut(result.passkey)
+        setPasskeyLaneReady(true)
+        setPasskeyLaneReason('admin-generated')
+        setAuthGateVerified(false)
+        setVerifiedRoute('none')
+        setAdminStatus('K1-bound passkey generated. Press PASSKEY + ENTER to unlock.')
+        setAuthMsg('Admin passkey generated for this K1. Press PASSKEY + ENTER to verify Auth-Gate.')
+        return
+      }
+
+      if (result.disabled) {
+        setAdminStatus(result.reason || 'Admin generation is not configured.')
+        return
+      }
+
+      setAdminStatus(result.error || result.reason || 'Could not generate passkey.')
+    } catch (error) {
+      setAdminStatus(error instanceof Error ? error.message : 'Admin passkey request failed.')
+    } finally {
+      setAdminBusy(false)
+    }
+  }
+
+  function AdminPanel() {
+    return (
+      <form
+        className="sg-admin-panel"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void generateAdminPasskeyAction()
+        }}
+        onPointerDownCapture={(event) => event.stopPropagation()}
+        onMouseDownCapture={(event) => event.stopPropagation()}
+        onClickCapture={(event) => event.stopPropagation()}
+        onKeyDownCapture={(event) => event.stopPropagation()}
+      >
+        <label>
+          <span>Admin pass phrase</span>
+          <input
+            name="securegate-admin-passphrase"
+            value={adminKey}
+            onChange={(event) => setAdminKey(event.target.value)}
+            placeholder="Paste admin pass phrase..."
+            type="password"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={adminBusy}
+          />
+        </label>
+
+        <label>
+          <span>K1 address</span>
+          <input
+            name="securegate-admin-k1"
+            value={adminK1}
+            onChange={(event) => setAdminK1(event.target.value)}
+            placeholder="0x..."
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={adminBusy}
+          />
+        </label>
+
+        <button type="submit" disabled={adminBusy}>
+          {adminBusy ? 'CHECKING...' : 'GENERATE K1 PASSKEY'}
+        </button>
+
+        {adminPasskeyOut && (
+          <label>
+            <span>Generated K1-bound passkey</span>
+            <input
+              value={adminPasskeyOut}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </label>
+        )}
+
+        {adminPasskeyOut && (
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(adminPasskeyOut)}
+          >
+            COPY PASSKEY
+          </button>
+        )}
+
+        {adminStatus && <p className="sg-status-line">{adminStatus}</p>}
+      </form>
+    )
   }
 
   async function handleFundingCheck() {
@@ -289,8 +595,6 @@ export default function App() {
     }
   }
 
-  // Read-only RPC bridge — backend keeps the URL; the browser only asks for
-  // nonce/gas/chainId-style reads. Never used for broadcasting.
   async function rpcRead(slug: string, method: string, params: unknown[]) {
     const r = await fetch(api(`rpc/${slug}`), {
       method: 'POST',
@@ -302,10 +606,7 @@ export default function App() {
     return d.result as string
   }
 
-  // Broadcast a locally-signed tx. The backend receives signedTx ONLY.
   async function broadcast(slug: string, signedTx: string): Promise<string> {
-    // Build the only allowed payload shape and fail closed if anything key-shaped
-    // ever tried to ride along (defense in depth; the backend also refuses).
     const body = backendDeployBody(signedTx)
     if (!isBackendSafe(body as unknown as Record<string, unknown>)) {
       throw new Error('refusing to send: payload carries key material')
@@ -321,7 +622,6 @@ export default function App() {
     return d.txHash as string
   }
 
-  // Build EIP-1559 fee + nonce fields from read-only RPC calls.
   async function buildTxCommon(slug: string, from: string, to: string | null, data: string) {
     const nonceHex = await rpcRead(slug, 'eth_getTransactionCount', [from, 'pending'])
     const gasPriceHex = await rpcRead(slug, 'eth_gasPrice', [])
@@ -330,7 +630,7 @@ export default function App() {
       const estParams = to ? [{ from, to, data }] : [{ from, data }]
       gasHex = await rpcRead(slug, 'eth_estimateGas', estParams)
     } catch {
-      gasHex = to ? '0x30d40' /* 200k */ : '0x2625a0' /* 2.5M */
+      gasHex = to ? '0x30d40' : '0x2625a0'
     }
     const gasPrice = BigInt(gasPriceHex)
     return {
@@ -341,8 +641,6 @@ export default function App() {
     }
   }
 
-  // Browser deploy builder: fetch canonical artifact, build creation calldata,
-  // sign locally with the deployer burner key, broadcast signedTx only.
   async function handleDeployGate() {
     setDeployStatus('')
     if (!selectedChain || !selectedChainMeta) {
@@ -385,7 +683,7 @@ export default function App() {
       const txHash = await broadcast(selectedChain, signedTx)
       setActiveStep(4)
       setDeployStatus(`Deployed — tx ${txHash}`)
-      setDeployerBurnerKey('') // scrub signer key immediately after use
+      setDeployerBurnerKey('')
       await recordAbuse('deploy_broadcast', from)
       pushToast('info', 'Deployment broadcast.')
     } catch (e) {
@@ -394,8 +692,6 @@ export default function App() {
     }
   }
 
-  // Browser K1 action builder: build a canonical queue* calldata, sign locally
-  // with the compromised K1 key (session-only), broadcast signedTx only.
   async function handleK1Action() {
     setActionStatus('')
     if (!selectedChain || !selectedChainMeta) {
@@ -438,9 +734,7 @@ export default function App() {
       setActionStatus('Broadcasting signed K1 action…')
       const txHash = await broadcast(selectedChain, signedTx)
       setActionStatus(`Queued ${actionKind} — tx ${txHash} (nonce ${nonce.slice(0, 10)}…)`)
-      setK1SessionKey('') // scrub K1 key immediately after use
-      // Persist the queued intent parameters so the K2 authorization panel can
-      // recompute the exact intentHash. No key material is stored here.
+      setK1SessionKey('')
       setLastIntent({
         assetType: actionKind,
         token: ethers.getAddress(actionToken),
@@ -461,9 +755,6 @@ export default function App() {
     }
   }
 
-  // Compute the client-side intent hash for the last queued intent. This mirrors
-  // the canonical contract's computeIntentHash byte-for-byte (verified on-chain
-  // by scripts/verify-k2-intent-builders.cjs). Pure local computation.
   function handleComputeIntentHash() {
     setAuthStatus('')
     setAuthVerified(false)
@@ -518,9 +809,6 @@ export default function App() {
     }
   }
 
-  // Sign the K2 authorization via an injected wallet (EIP-1193). The K2 private
-  // key stays in the wallet — we only ever call eth_signTypedData_v4. If no
-  // provider is present we surface the honest `K2 signer not connected` error.
   async function handleSignWithK2Wallet() {
     setAuthStatus('')
     setAuthVerified(false)
@@ -558,8 +846,6 @@ export default function App() {
     }
   }
 
-  // Verify a pasted K2 signature recovers the expected K2 address. The K2 key is
-  // never entered here — only the resulting signature is checked client-side.
   function handleVerifyK2Signature() {
     setAuthStatus('')
     setAuthVerified(false)
@@ -598,8 +884,6 @@ export default function App() {
     }
   }
 
-  // Build + broadcast authorizeIntent(intentHash, K2 signature). Sent by the K1
-  // session key (pays gas); the authorization is K2's signature. signedTx only.
   async function handleAuthorizeIntent() {
     setAuthStatus('')
     if (!authVerified) {
@@ -641,17 +925,12 @@ export default function App() {
     }
   }
 
-  // Build + broadcast executeIntent(intentHash) — K1-only, forces the asset to
-  // the immutable K3 destination. signedTx only.
   async function handleExecuteIntent() {
     setAuthStatus('')
     if (!authIntentHash) {
       setAuthStatus('Compute + authorize the intent first.')
       return
     }
-    // Execution is gated EXCLUSIVELY on a verified K2 EIP-712 signature. Passing
-    // an empty placeholder-results array proves those honest placeholders (SCAN,
-    // LINK DEVICE, passkey, admin, 2FA) can never contribute to this decision.
     if (!canExecuteIntent(authVerified, [])) {
       setAuthStatus('Execution is locked until the K2 signature is verified. No placeholder can unlock it.')
       return
@@ -664,8 +943,6 @@ export default function App() {
       setAuthStatus('Enter the K1 key (session-only) to execute.')
       return
     }
-    // Enforce the immutable K3 destination. If a K3 address is present, the sweep
-    // target MUST resolve to K3 and any alternate is captured/ignored (neutral copy).
     if (k3Address.trim()) {
       const evalK3 = enforceK3(k3Address, k3Address)
       const onlyK3 = sweepTargetsOnlyK3({ intentHash: authIntentHash, k3: k3Address })
@@ -700,63 +977,12 @@ export default function App() {
     }
   }
 
-  // Admin passkey generation — the admin black circle mints a K1-BOUND passkey
-  // (not per-chain) from an admin key + K1. The honest local placeholder reports
-  // status; the backend performs the real mint when an admin key is configured,
-  // and reports "disabled" (no fake success) when it is not.
-  async function generatePasskey() {
-    if (!adminKey.trim() || !adminK1.trim()) {
-      setAdminStatus('Enter both the admin key and a K1 address.')
-      return
-    }
-    const local = generateAdminPasskey(true)
-    setAdminStatus(local.message)
-    const remote = await generateAdminPasskeyRemote(adminKey, adminK1)
-    setAdminKey('') // scrub admin key immediately after use
-    if (remote.generated && remote.passkey) {
-      setAdminStatus(`K1-bound passkey minted for ${remote.k1}: ${remote.passkey}`)
-      pushToast('info', 'K1-bound passkey minted.')
-    } else if (remote.disabled) {
-      setAdminStatus('Admin minting is not configured on this deployment.')
-      pushToast('warn', 'Admin minting not configured.')
-    } else {
-      pushToast('warn', remote.reason || local.message)
-    }
-  }
-
-  // SCRUB clears every sensitive field and session-only variable.
-  function scrub() {
-    setK1SessionKey('')
-    setDeployerBurnerKey('')
-    setPasskey('')
-    setK2Address('')
-    setK3Address('')
-    setDeployStatus('')
-    setFundingPanel('')
-    setAdminKey('')
-    setActiveStep(-1)
-    setActionToken('')
-    setActionAmount('')
-    setActionTokenId('')
-    setActionStatus('')
-    setLastIntent(null)
-    setAuthIntentHash('')
-    setAuthTypedData('')
-    setAuthK2Expected('')
-    setAuthK2Signature('')
-    setAuthVerified(false)
-    setK2WalletAddress('')
-    setAuthStatus('')
-    sessionScratch.current = {}
-    setAuthMsg('Session-only fields cleared.')
-    pushToast('info', 'Session-only fields scrubbed.')
-  }
-
   async function sendThanks() {
     if (!thanksMessage.trim()) {
       setThanksStatus('Write a note first.')
       return
     }
+    setThanksSending(true)
     try {
       const r = await fetch(api('thank-you/send'), {
         method: 'POST',
@@ -769,60 +995,59 @@ export default function App() {
       else setThanksStatus('Could not send: ' + (d?.reason || 'unknown'))
     } catch {
       setThanksStatus('Could not send.')
+    } finally {
+      setThanksSending(false)
     }
   }
 
-  function copyThanksAddress() {
-    // The thank-you address is copy-only and is NEVER K3. Guard proves the two are
-    // kept distinct before anything touches the clipboard.
+  function copyThankYouAddress() {
     if (thanksAddress && thankYouIsNotK3(thanksAddress, k3Address)) {
       navigator.clipboard?.writeText(thanksAddress).catch(() => {})
       pushToast('info', 'Address copied.')
     }
   }
 
+  function shortAddress(addr: string) {
+    if (!addr) return ''
+    return addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
+  }
+
   return (
     <div className="sg-root">
-      {/* ============================ 42px FIXED TOPBAR ==================== */}
+      {/* ── TOPBAR with upper-left SECUREGATE / EIP-777G brand ── */}
       <header className="sg-topbar">
-        <span className="sg-brandmark" />
-        <span className="sg-wordmark">
-          <span className="sg-brand">SECUREGATE</span>
-          <span className="sg-badge">EIP-777G</span>
-        </span>
+        <a className="sg-topbar-brand" href="/" aria-label="SecureGate EIP-777G home">
+          <strong>SECUREGATE</strong>
+          <span>EIP-777G</span>
+        </a>
 
-        <span className="sg-topbar-spacer" />
+        <div className="sg-topbar-line" />
 
-        {/* Power/status control — honest: the gate stays LOCKED until a real
-            verifier is connected. Never reports a fake "armed" state. */}
-        <span id="power-status" className="sg-power" title="Gate stays locked until a verifier is connected">
-          <span className="dot" />
-        </span>
-
-        <button id="scrub-session" type="button" className="sg-scrub-btn" onClick={scrub}>SCRUB</button>
-        <button
-          id="power-button"
-          type="button"
-          className="sg-power-btn"
-          onClick={scrub}
-          title="Power / clear session"
-          aria-label="Power — clears the session"
-        >
-          <span aria-hidden="true">⏻</span>
-        </button>
+        <div className="sg-topbar-actions">
+          <button className="sg-scrub-btn" type="button" onClick={scrubInputsKeepK1}>
+            SCRUB
+          </button>
+          <button
+            className="sg-power-btn"
+            type="button"
+            onClick={powerReset}
+            aria-label="Power reset and lock dashboard"
+          >
+            <span aria-hidden="true">⏻</span>
+          </button>
+        </div>
       </header>
 
       <div className="sg-shell">
-        {/* ========================== 264px FIXED SIDEBAR ================== */}
+        {/* ── SIDEBAR ── */}
         <aside className="sg-sidebar" aria-label="Auth-Gate">
-          {/* Neon circular SCAN control �� same-device Auth-Gate signal */}
           <div className="sg-scan-wrap">
             <button
               id="scan-authenticator"
               type="button"
               className="sg-scan-circle"
               disabled={devicesLocked}
-              onClick={() => deviceAttempt('scan')}
+              onClick={() => void deviceAttempt('scan')}
               aria-label="SCAN — same-device ownership check"
             >
               <span className="sg-scan-ring" aria-hidden="true" />
@@ -833,8 +1058,8 @@ export default function App() {
           <div className="sg-genesis">GENESIS OWNER AUTHENTICATION</div>
 
           <div className="sg-locked-card" role="status">
-            <strong>DASHBOARD LOCKED</strong>
-            <span>AUTHENTICATION OF K1 GENESIS OWNER REQUIRED</span>
+            <strong>{dashboardUnlocked ? 'DASHBOARD UNLOCKED' : 'DASHBOARD LOCKED'}</strong>
+            <span>{dashboardUnlocked ? 'K1 GENESIS OWNER VERIFIED' : 'AUTHENTICATION OF K1 GENESIS OWNER REQUIRED'}</span>
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -851,7 +1076,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'grid', gap: 10 }}>
-            <Btn id="link-device" tone="pink" disabled={devicesLocked} onClick={() => deviceAttempt('link')}>
+            <Btn id="link-device" tone="pink" disabled={devicesLocked} onClick={() => void deviceAttempt('link')}>
               LINK DEVICE
             </Btn>
           </div>
@@ -869,7 +1094,7 @@ export default function App() {
                 spellCheck={false}
                 style={inputStyle}
               />
-              <Btn id="passkey-enter" onClick={passkeyEnter}>ENTER</Btn>
+              <Btn id="passkey-enter" onClick={() => void passkeyEnter()}>ENTER</Btn>
             </div>
           </div>
 
@@ -885,7 +1110,6 @@ export default function App() {
             Device attempts: {Math.min(deviceAttempts, MAX_DEVICE_ATTEMPTS)}/{MAX_DEVICE_ATTEMPTS}
           </div>
 
-          {/* AUTH-GATE guidance */}
           <div className="sg-authgate-note">
             <div className="sg-authgate-title">AUTH-GATE</div>
             <p>Same device: SCAN. Different device: USB first, then LINK DEVICE.</p>
@@ -893,7 +1117,12 @@ export default function App() {
             <p>SCRUB clears all local state at any time.</p>
           </div>
 
-          {/* CAUTION block with admin circle — always visible in locked state */}
+          {passkeyLaneReady && (
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--sg-cyan)' }}>
+              Passkey lane open ({passkeyLaneReason}). PASSKEY + ENTER required.
+            </div>
+          )}
+
           <div className="sg-side-caution" role="note" aria-label="Caution">
             <div className="sg-side-caution-title">&#9888; CAUTION</div>
             <p data-sg-caution-text="true">This wallet is in recovery mode. Unauthorized access attempts are logged.</p>
@@ -902,17 +1131,22 @@ export default function App() {
               id="admin-black-circle"
               className="sg-admin-circle"
               type="button"
-              aria-label="Admin contact"
-              onClick={() => window.open('https://x.com/hope_ology', '_blank', 'noopener')}
+              aria-label="Admin K1-bound passkey generator"
+              aria-expanded={adminPanelOpen}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setAdminPanelOpen((value) => !value)
+              }}
             >
-              ADM
+              <span aria-hidden="true">ADM</span>
             </button>
+            {adminPanelOpen && <AdminPanel />}
           </div>
         </aside>
 
-        {/* ============================ MAIN ============================== */}
+        {/* ── MAIN ── */}
         <main className="sg-main" style={{ display: 'grid', gap: 20 }}>
-          {/* ===================== STANDALONE OPERATION (landing canvas) ===================== */}
           <section className="sg-standalone" aria-label="Standalone operation">
             <h1 className="sg-standalone-title">STANDALONE OPERATION</h1>
             <p>This dashboard executes the authentication flow client-side.</p>
@@ -929,335 +1163,297 @@ export default function App() {
 
           {!dashboardUnlocked ? (
             <p className="sg-gate-hint" aria-live="polite">
-              Complete the Auth-Gate (verified passkey or human fallback) to reveal the recovery workspace.
+              Complete the Auth-Gate (verified passkey) to reveal the recovery workspace.
             </p>
           ) : null}
 
-          {/* ===================== RECOVERY WORKSPACE (revealed after Auth-Gate) ===================== */}
           {dashboardUnlocked ? (
-          <>
-          {/* Tab navigation */}
-          <nav className="sg-tabs" role="tablist" aria-label="Sections">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                role="tab"
-                aria-selected={activeTab === t.key}
-                className="sg-tab"
-                onClick={() => setActiveTab(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* ---------- RECOVERY TAB ---------- */}
-          {activeTab === 'recovery' ? (
-            <section style={card} aria-label="Recovery gate">
-              <h1 style={{ margin: '0 0 4px', fontSize: 20 }}>Recovery gate</h1>
-              <p style={{ margin: '0 0 18px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                K1 proves ownership · K2 authorizes · K3 is the immutable forced destination.
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                <div>
-                  <label style={label} htmlFor="recovery-k1">K1 address</label>
-                  <input id="recovery-k1" value={k1Address} readOnly placeholder="Auth-Gate fills this" style={{ ...inputStyle, opacity: 0.8 }} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="k1-session-key">Compromised K1 key</label>
-                  <input id="k1-session-key" type="password" value={k1SessionKey} onChange={(e) => setK1SessionKey(e.target.value)} placeholder="Paste only for this session" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="deployer-burner-key">Deployer burner key</label>
-                  <input id="deployer-burner-key" type="password" value={deployerBurnerKey} onChange={(e) => setDeployerBurnerKey(e.target.value)} placeholder="One-time deploy signer" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="k2-address">K2 authority address</label>
-                  <input id="k2-address" value={k2Address} onChange={(e) => setK2Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="k3-address">K3 recovery address</label>
-                  <input id="k3-address" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="network-select">Network</label>
-                  <select
-                    id="network-select"
-                    aria-label="Network"
-                    value={selectedChain}
-                    onChange={(e) => setSelectedChain(e.target.value)}
-                    style={inputStyle}
+            <>
+              <nav className="sg-tabs" role="tablist" aria-label="Sections">
+                {TABS.map((t) => (
+                  <button
+                    key={t.key}
+                    role="tab"
+                    aria-selected={activeTab === t.key}
+                    className="sg-tab"
+                    onClick={() => setActiveTab(t.key)}
                   >
-                    <option value="">Select network</option>
-                    {chains.map((c) => (
-                      <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
-                        {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
-                <Btn id="funding-check" tone="plain" onClick={handleFundingCheck}>Calculate funding</Btn>
-                <Btn id="deploy-gate" tone="cyan" onClick={handleDeployGate}>Deploy gate</Btn>
-              </div>
-
-              {fundingPanel ? (
-                <div id="funding-panel" style={{ marginTop: 14, padding: 14, border: '1px dashed var(--border-primary)', borderRadius: 10, background: 'var(--bg-tertiary)', fontSize: 13 }}>
-                  {fundingPanel}
-                </div>
-              ) : null}
-              <div id="deploy-status" style={{ marginTop: 10, fontSize: 13, color: 'var(--accent-secondary)' }} aria-live="polite">
-                {deployStatus}
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
-                {PROGRESS_LABELS.map((s, i) => (
-                  <span
-                    key={s}
-                    style={{
-                      fontSize: 12,
-                      padding: '5px 10px',
-                      borderRadius: 999,
-                      border: '1px solid',
-                      borderColor: i <= activeStep ? 'var(--accent-primary)' : 'var(--border-primary)',
-                      color: i <= activeStep ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    }}
-                  >
-                    {s}
-                  </span>
+                    {t.label}
+                  </button>
                 ))}
-              </div>
+              </nav>
 
-              {/* ---------- BROWSER K1 ACTION BUILDER ---------- */}
-              <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border-primary)' }}>
-                <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>K1 action builder</h2>
-                <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                  Build a canonical <code>queueERC20/721/1155</code> intent on a deployed gate. The tx is
-                  built and signed <strong>locally</strong> with the session-only K1 key — only the signed
-                  transaction is broadcast. Keys and RPC URLs never leave their boundary.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                  <div>
-                    <label style={label} htmlFor="k1-gate-address">Deployed gate address</label>
-                    <input id="k1-gate-address" value={gateAddress} onChange={(e) => setGateAddress(e.target.value)} placeholder="0x… (SecureGate contract)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={label} htmlFor="k1-action-kind">Asset standard</label>
-                    <select id="k1-action-kind" value={actionKind} onChange={(e) => setActionKind(e.target.value as 'ERC20' | 'ERC721' | 'ERC1155')} style={inputStyle}>
-                      <option value="ERC20">ERC-20</option>
-                      <option value="ERC721">ERC-721</option>
-                      <option value="ERC1155">ERC-1155</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={label} htmlFor="k1-action-token">Token address</label>
-                    <input id="k1-action-token" value={actionToken} onChange={(e) => setActionToken(e.target.value)} placeholder="0x… (token contract)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                  </div>
-                  {actionKind !== 'ERC20' ? (
-                    <div>
-                      <label style={label} htmlFor="k1-action-tokenid">Token ID</label>
-                      <input id="k1-action-tokenid" value={actionTokenId} onChange={(e) => setActionTokenId(e.target.value)} placeholder="e.g. 1234" autoComplete="off" spellCheck={false} style={inputStyle} />
-                    </div>
-                  ) : null}
-                  {actionKind !== 'ERC721' ? (
-                    <div>
-                      <label style={label} htmlFor="k1-action-amount">Amount (base units)</label>
-                      <input id="k1-action-amount" value={actionAmount} onChange={(e) => setActionAmount(e.target.value)} placeholder="e.g. 1000000000000000000" autoComplete="off" spellCheck={false} style={inputStyle} />
-                    </div>
-                  ) : null}
-                </div>
-                <div style={{ marginTop: 14 }}>
-                  <Btn id="k1-action-build" tone="gold" onClick={handleK1Action}>Build &amp; broadcast K1 intent</Btn>
-                </div>
-                <div id="k1-action-status" style={{ marginTop: 10, fontSize: 13, color: 'var(--accent-secondary)', wordBreak: 'break-all' }} aria-live="polite">
-                  {actionStatus}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
-                <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>K2 authorization (EIP-712)</h2>
-                <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                  Compute the intent hash locally (mirrors the contract's <code>computeIntentHash</code>),
-                  have the <strong>K2 wallet</strong> sign the EIP-712 typed data <em>in its own wallet</em>,
-                  then paste the signature here to verify it recovers K2 before building{' '}
-                  <code>authorizeIntent</code>. The K2 private key is <strong>never entered</strong> here.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                  <div>
-                    <label style={label} htmlFor="k3-address-auth">K3 forced-recovery address</label>
-                    <input id="k3-address-auth" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x… (immutable K3 destination)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={label} htmlFor="k2-expected">Expected K2 address</label>
-                    <input id="k2-expected" value={authK2Expected} onChange={(e) => setAuthK2Expected(e.target.value)} placeholder="0x… (K2 authorizer)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                  </div>
-                </div>
-                <div style={{ marginTop: 14 }}>
-                  <Btn id="k2-compute-hash" tone="gold" onClick={handleComputeIntentHash}>Compute intent hash</Btn>
-                </div>
-                {authIntentHash ? (
-                  <div style={{ marginTop: 12 }}>
-                    <label style={label}>Intent hash</label>
-                    <div id="k2-intent-hash" style={{ fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all', color: 'var(--accent-secondary)' }}>{authIntentHash}</div>
-                    <label style={{ ...label, marginTop: 10 }}>EIP-712 typed data for K2 to sign</label>
-                    <textarea id="k2-typed-data" readOnly value={authTypedData} style={{ ...inputStyle, minHeight: 150, fontFamily: 'monospace', fontSize: 11 }} />
-                  </div>
-                ) : null}
-                <div style={{ marginTop: 12 }}>
-                  <label style={label} htmlFor="k2-signature">Paste K2 signature (65-byte 0x…)</label>
-                  <input id="k2-signature" value={authK2Signature} onChange={(e) => setAuthK2Signature(e.target.value)} placeholder="0x… (signature from the K2 wallet)" autoComplete="off" spellCheck={false} style={inputStyle} />
-                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                    Prefer signing in-wallet: connect the <strong>K2 wallet</strong> below to sign the typed
-                    data with <code>eth_signTypedData_v4</code>. The K2 key never enters this app. Pasting a
-                    signature stays available as a fallback.
+              {activeTab === 'recovery' ? (
+                <section style={card} aria-label="Recovery gate">
+                  <h1 style={{ margin: '0 0 4px', fontSize: 20 }}>Recovery gate</h1>
+                  <p style={{ margin: '0 0 18px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                    K1 proves ownership · K2 authorizes · K3 is the immutable forced destination.
                   </p>
-                </div>
-                <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <Btn id="k2-wallet-sign" tone="cyan" onClick={handleSignWithK2Wallet}>Sign with K2 wallet</Btn>
-                  <Btn id="k2-verify" tone="gold" onClick={handleVerifyK2Signature}>Verify recovers K2</Btn>
-                  <Btn id="k2-authorize" tone={authVerified ? 'gold' : 'plain'} onClick={handleAuthorizeIntent}>Build &amp; broadcast authorizeIntent</Btn>
-                  <Btn id="k1-execute" tone="plain" onClick={handleExecuteIntent}>Build &amp; broadcast executeIntent</Btn>
-                </div>
-                {k2WalletAddress ? (
-                  <div id="k2-wallet-addr" style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                    Connected K2 wallet: <code>{k2WalletAddress}</code>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                    <div>
+                      <label style={label} htmlFor="recovery-k1">K1 address</label>
+                      <input id="recovery-k1" value={k1Address} readOnly placeholder="Auth-Gate fills this" style={{ ...inputStyle, opacity: 0.8 }} />
+                    </div>
+                    <div>
+                      <label style={label} htmlFor="k1-session-key">Compromised K1 key</label>
+                      <input id="k1-session-key" type="password" value={k1SessionKey} onChange={(e) => setK1SessionKey(e.target.value)} placeholder="Paste only for this session" autoComplete="off" spellCheck={false} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={label} htmlFor="deployer-burner-key">Deployer burner key</label>
+                      <input id="deployer-burner-key" type="password" value={deployerBurnerKey} onChange={(e) => setDeployerBurnerKey(e.target.value)} placeholder="One-time deploy signer" autoComplete="off" spellCheck={false} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={label} htmlFor="k2-address">K2 authority address</label>
+                      <input id="k2-address" value={k2Address} onChange={(e) => setK2Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={label} htmlFor="k3-address">K3 recovery address</label>
+                      <input id="k3-address" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x… (public address only)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={label} htmlFor="network-select">Network</label>
+                      <select id="network-select" aria-label="Network" value={selectedChain} onChange={(e) => setSelectedChain(e.target.value)} style={inputStyle}>
+                        <option value="">Select network</option>
+                        {chains.map((c) => (
+                          <option key={c.slug} value={c.slug} disabled={!c.deploySupported}>
+                            {c.name} ({c.nativeSymbol}){c.deploySupported ? '' : ' — view only'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                ) : null}
-                <div id="k2-auth-status" style={{ marginTop: 10, fontSize: 13, color: 'var(--accent-secondary)', wordBreak: 'break-all' }} aria-live="polite">
-                  {authStatus}
-                </div>
-              </div>
-            </section>
-          ) : null}
+                  <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
+                    <Btn id="funding-check" tone="plain" onClick={() => void handleFundingCheck()}>Calculate funding</Btn>
+                    <Btn id="deploy-gate" tone="cyan" onClick={() => void handleDeployGate()}>Deploy gate</Btn>
+                  </div>
+                  {fundingPanel ? (
+                    <div id="funding-panel" style={{ marginTop: 14, padding: 14, border: '1px dashed var(--border-primary)', borderRadius: 10, background: 'var(--bg-tertiary)', fontSize: 13 }}>
+                      {fundingPanel}
+                    </div>
+                  ) : null}
+                  <div id="deploy-status" style={{ marginTop: 10, fontSize: 13, color: 'var(--accent-secondary)' }} aria-live="polite">
+                    {deployStatus}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    {PROGRESS_LABELS.map((s, i) => (
+                      <span key={s} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 999, border: '1px solid', borderColor: i <= activeStep ? 'var(--accent-primary)' : 'var(--border-primary)', color: i <= activeStep ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border-primary)' }}>
+                    <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>K1 action builder</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                      <div>
+                        <label style={label} htmlFor="k1-gate-address">Deployed gate address</label>
+                        <input id="k1-gate-address" value={gateAddress} onChange={(e) => setGateAddress(e.target.value)} placeholder="0x… (SecureGate contract)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={label} htmlFor="k1-action-kind">Asset standard</label>
+                        <select id="k1-action-kind" value={actionKind} onChange={(e) => setActionKind(e.target.value as 'ERC20' | 'ERC721' | 'ERC1155')} style={inputStyle}>
+                          <option value="ERC20">ERC-20</option>
+                          <option value="ERC721">ERC-721</option>
+                          <option value="ERC1155">ERC-1155</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={label} htmlFor="k1-action-token">Token address</label>
+                        <input id="k1-action-token" value={actionToken} onChange={(e) => setActionToken(e.target.value)} placeholder="0x… (token contract)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                      </div>
+                      {actionKind !== 'ERC20' ? (
+                        <div>
+                          <label style={label} htmlFor="k1-action-tokenid">Token ID</label>
+                          <input id="k1-action-tokenid" value={actionTokenId} onChange={(e) => setActionTokenId(e.target.value)} placeholder="e.g. 1234" autoComplete="off" spellCheck={false} style={inputStyle} />
+                        </div>
+                      ) : null}
+                      {actionKind !== 'ERC721' ? (
+                        <div>
+                          <label style={label} htmlFor="k1-action-amount">Amount (base units)</label>
+                          <input id="k1-action-amount" value={actionAmount} onChange={(e) => setActionAmount(e.target.value)} placeholder="e.g. 1000000000000000000" autoComplete="off" spellCheck={false} style={inputStyle} />
+                        </div>
+                      ) : null}
+                    </div>
+                    <div style={{ marginTop: 14 }}>
+                      <Btn id="k1-action-build" tone="gold" onClick={() => void handleK1Action()}>Build &amp; broadcast K1 intent</Btn>
+                    </div>
+                    <div id="k1-action-status" style={{ marginTop: 10, fontSize: 13, color: 'var(--accent-secondary)', wordBreak: 'break-all' }} aria-live="polite">
+                      {actionStatus}
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+                    <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>K2 authorization (EIP-712)</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                      <div>
+                        <label style={label} htmlFor="k3-address-auth">K3 forced-recovery address</label>
+                        <input id="k3-address-auth" value={k3Address} onChange={(e) => setK3Address(e.target.value)} placeholder="0x… (immutable K3 destination)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={label} htmlFor="k2-expected">Expected K2 address</label>
+                        <input id="k2-expected" value={authK2Expected} onChange={(e) => setAuthK2Expected(e.target.value)} placeholder="0x… (K2 authorizer)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 14 }}>
+                      <Btn id="k2-compute-hash" tone="gold" onClick={handleComputeIntentHash}>Compute intent hash</Btn>
+                    </div>
+                    {authIntentHash ? (
+                      <div style={{ marginTop: 12 }}>
+                        <label style={label}>Intent hash</label>
+                        <div id="k2-intent-hash" style={{ fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all', color: 'var(--accent-secondary)' }}>{authIntentHash}</div>
+                        <label style={{ ...label, marginTop: 10 }}>EIP-712 typed data for K2 to sign</label>
+                        <textarea id="k2-typed-data" readOnly value={authTypedData} style={{ ...inputStyle, minHeight: 150, fontFamily: 'monospace', fontSize: 11 }} />
+                      </div>
+                    ) : null}
+                    <div style={{ marginTop: 12 }}>
+                      <label style={label} htmlFor="k2-signature">Paste K2 signature (65-byte 0x…)</label>
+                      <input id="k2-signature" value={authK2Signature} onChange={(e) => setAuthK2Signature(e.target.value)} placeholder="0x… (signature from the K2 wallet)" autoComplete="off" spellCheck={false} style={inputStyle} />
+                    </div>
+                    <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <Btn id="k2-wallet-sign" tone="cyan" onClick={() => void handleSignWithK2Wallet()}>Sign with K2 wallet</Btn>
+                      <Btn id="k2-verify" tone="gold" onClick={handleVerifyK2Signature}>Verify recovers K2</Btn>
+                      <Btn id="k2-authorize" tone={authVerified ? 'gold' : 'plain'} onClick={() => void handleAuthorizeIntent()}>Build &amp; broadcast authorizeIntent</Btn>
+                      <Btn id="k1-execute" tone="plain" onClick={() => void handleExecuteIntent()}>Build &amp; broadcast executeIntent</Btn>
+                    </div>
+                    {k2WalletAddress ? (
+                      <div id="k2-wallet-addr" style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        Connected K2 wallet: <code>{k2WalletAddress}</code>
+                      </div>
+                    ) : null}
+                    <div id="k2-auth-status" style={{ marginTop: 10, fontSize: 13, color: 'var(--accent-secondary)', wordBreak: 'break-all' }} aria-live="polite">
+                      {authStatus}
+                    </div>
+                  </div>
+                </section>
+              ) : null}
 
-          {/* ---------- PROTECTION TAB ---------- */}
-          {activeTab === 'protection' ? (
-            <section style={card} aria-label="Proactive protection">
-              <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>2FA / Proactive Protection</h2>
-              <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                {twoFactorStatus().message} It never asks for a private key and never limits recovery.
-              </p>
-              <div className="sg-statusrow">
-                <span className="sg-statusdot off" />
-                <span className="sg-statuslabel">Proactive 2FA guard</span>
-                <span className="sg-statustag">NOT ACTIVE YET</span>
-              </div>
-              <div className="sg-statusrow">
-                <span className="sg-statusdot off" />
-                <span className="sg-statuslabel">Automatic threat monitoring</span>
-                <span className="sg-statustag">NOT ACTIVE YET</span>
-              </div>
-            </section>
-          ) : null}
+              {activeTab === 'protection' ? (
+                <section style={card} aria-label="Proactive protection">
+                  <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>2FA / Proactive Protection</h2>
+                  <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                    {twoFactorStatus().message} It never asks for a private key and never limits recovery.
+                  </p>
+                  <div className="sg-statusrow">
+                    <span className="sg-statusdot off" />
+                    <span className="sg-statuslabel">Proactive 2FA guard</span>
+                    <span className="sg-statustag">NOT ACTIVE YET</span>
+                  </div>
+                  <div className="sg-statusrow">
+                    <span className="sg-statusdot off" />
+                    <span className="sg-statuslabel">Automatic threat monitoring</span>
+                    <span className="sg-statustag">NOT ACTIVE YET</span>
+                  </div>
+                </section>
+              ) : null}
 
-          {/* ---------- ADMIN TAB ---------- */}
-          {activeTab === 'admin' ? (
-            <section style={card} aria-label="Admin passkey generation">
-              <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Admin · K1-bound passkey</h2>
-              <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                Generate a K1-bound passkey from an admin key. This is an <strong>honest placeholder</strong> —
-                no credential is generated and the admin key is never transmitted.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                <div>
-                  <label style={label} htmlFor="admin-key">Admin key</label>
-                  <input id="admin-key" type="password" value={adminKey} onChange={(e) => setAdminKey(e.target.value)} placeholder="Session-only, never sent" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={label} htmlFor="admin-k1-address">K1 address to bind</label>
-                  <input id="admin-k1-address" value={adminK1} onChange={(e) => setAdminK1(e.target.value)} placeholder="0x…" autoComplete="off" spellCheck={false} style={inputStyle} />
-                </div>
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <Btn id="admin-generate-passkey" tone="cyan" onClick={generatePasskey}>Generate K1-bound passkey</Btn>
-              </div>
-              <div id="admin-status" style={{ marginTop: 12, fontSize: 13, color: 'var(--accent-secondary)' }} aria-live="polite">
-                {adminStatus}
-              </div>
-            </section>
-          ) : null}
+              {activeTab === 'admin' ? (
+                <section style={card} aria-label="Admin passkey generation">
+                  <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Admin · K1-bound passkey</h2>
+                  <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                    Generate a K1-bound passkey from an admin key.
+                  </p>
+                  <AdminPanel />
+                </section>
+              ) : null}
 
-          {/* ---------- STATUS TAB ---------- */}
-          {activeTab === 'status' ? (
-            <section id="verification-panel" style={card} aria-label="Verification status">
-              <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Verification status</h2>
-              <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', fontSize: 13 }}>
-                What is connected in this build versus what is still an honest placeholder.
-              </p>
-              <div style={{ marginBottom: 10, fontSize: 11, letterSpacing: '0.12em', color: 'var(--success)' }}>CONNECTED</div>
-              {CONNECTED_LAYERS.map((l) => (
-                <div className="sg-statusrow" key={l}>
-                  <span className="sg-statusdot on" />
-                  <span className="sg-statuslabel">{l}</span>
-                  <span className="sg-statustag">CONNECTED</span>
-                </div>
-              ))}
-              <div style={{ margin: '16px 0 10px', fontSize: 11, letterSpacing: '0.12em', color: 'var(--warning)' }}>NOT CONNECTED YET</div>
-              {PENDING_LAYERS.map((l) => (
-                <div className="sg-statusrow" key={l}>
-                  <span className="sg-statusdot off" />
-                  <span className="sg-statuslabel">{l}</span>
-                  <span className="sg-statustag">PENDING</span>
-                </div>
-              ))}
-            </section>
+              {activeTab === 'status' ? (
+                <section id="verification-panel" style={card} aria-label="Verification status">
+                  <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Verification status</h2>
+                  <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                    What is connected in this build versus what is still an honest placeholder.
+                  </p>
+                  <div style={{ marginBottom: 10, fontSize: 11, letterSpacing: '0.12em', color: 'var(--success)' }}>CONNECTED</div>
+                  {CONNECTED_LAYERS.map((l) => (
+                    <div className="sg-statusrow" key={l}>
+                      <span className="sg-statusdot on" />
+                      <span className="sg-statuslabel">{l}</span>
+                      <span className="sg-statustag">CONNECTED</span>
+                    </div>
+                  ))}
+                  <div style={{ margin: '16px 0 10px', fontSize: 11, letterSpacing: '0.12em', color: 'var(--warning)' }}>NOT CONNECTED YET</div>
+                  {PENDING_LAYERS.map((l) => (
+                    <div className="sg-statusrow" key={l}>
+                      <span className="sg-statusdot off" />
+                      <span className="sg-statuslabel">{l}</span>
+                      <span className="sg-statustag">PENDING</span>
+                    </div>
+                  ))}
+                </section>
+              ) : null}
+            </>
           ) : null}
-
-          {/* ==================== THANK-YOU ENVELOPE (always visible) ==================== */}
-          </>
-          ) : null}
-
-{dashboardUnlocked && (
-                  <section id="thanks-panel" style={{ ...card, display: 'grid', gap: 10, maxWidth: 460 }} aria-label="Thank-you envelope">
-            <a id="thanks-handle" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--sg-pink)', fontWeight: 600, textDecoration: 'none' }}>
-              {thanksHandle}
-            </a>
-            {thanksAddress ? (
-              <>
-                <div id="thanks-address-label" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'var(--text-secondary)' }}>EVM ADDRESS</div>
-                <div id="thanks-address-box" onClick={copyThanksAddress} title="Click to copy address" style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, padding: 10, background: 'var(--sg-panel-2)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: 'pointer', wordBreak: 'break-all' }}>
-                  {thanksAddress}
-                </div>
-                <Btn id="thanks-copy-address" tone="gold" onClick={copyThanksAddress}>CLICK COPY ADDRESS</Btn>
-              </>
-            ) : null}
-            {dashboardUnlocked && (<><textarea id="thanks-message" maxLength={280} value={thanksMessage} onChange={(e) => setThanksMessage(e.target.value)} placeholder="Optional thank-you note" style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} />
-            <Btn id="thanks-send" onClick={sendThanks}>Send thank-you</Btn>
-            <div id="thanks-status" style={{ fontSize: 12, color: 'var(--text-secondary)' }} aria-live="polite">{thanksStatus}</div></>)}
-          </section>
-        )}
         </main>
-
-        {/* ==================== FOOTER IDENTITY ==================== */}
-        <footer className="sg-footer">
-          <div className="sg-footer-thanks">THANK YOU</div>
-          <div className="sg-footer-built">BUILT BY EMP</div>
-          <a
-            className="sg-footer-handle"
-            href="https://x.com/hope_ology"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            @hope_ology
-          </a>
-{dashboardUnlocked && (
-                  <a
-            id="deliverables-link"
-            href={`${import.meta.env.BASE_URL}api/deliverables`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="sg-footer-deliverables"
-          >
-            Build deliverables — docs, verifier code &amp; ZIPs ↗
-          </a>
-        )}
-        </footer>
       </div>
 
-      {/* ============================ TOASTS ============================== */}
+      {/* ── FOOTER: fixed bottom-right, always visible ── */}
+      <aside className="sg-footer" aria-label="Thank-you and creator links">
+        <button
+          className="sg-thankyou-button"
+          type="button"
+          onClick={() => setThanksOpen((value) => !value)}
+        >
+          THANK YOU
+        </button>
+
+        {thanksOpen && (
+          <div className="sg-thanks-panel" role="dialog" aria-label="Send thank-you note">
+            <label className="sg-thanks-compose">
+              <span>THANK-YOU NOTE</span>
+              <textarea
+                ref={thanksTextareaRef}
+                value={thanksMessage}
+                onChange={(event) => setThanksMessage(event.target.value)}
+                placeholder=""
+                aria-label="Write a thank-you note"
+                autoComplete="off"
+                spellCheck={true}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => void sendThanks()}
+              disabled={thanksSending}
+            >
+              {thanksSending ? 'SENDING...' : 'SEND NOTE'}
+            </button>
+
+            <button
+              type="button"
+              onClick={copyThankYouAddress}
+              disabled={!hasThankYouEvmAddress}
+            >
+              COPY EVM ADDRESS
+            </button>
+
+            {hasThankYouEvmAddress && (
+              <code className="sg-thanks-address">{shortAddress(thanksAddress)}</code>
+            )}
+
+            <a
+              className="sg-thanks-link-button"
+              href="https://x.com/hope_ology"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              OPEN @hope_ology
+            </a>
+
+            {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
+          </div>
+        )}
+
+        <div className="sg-built-by">BUILT BY EMP</div>
+
+        <a
+          className="sg-twitter-link"
+          href="https://x.com/hope_ology"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {thanksHandle || '@hope_ology'}
+        </a>
+      </aside>
+
+      {/* ── TOASTS ── */}
       <div className="sg-toasts" aria-live="polite" aria-atomic="false">
         {toasts.map((t) => (
           <div key={t.id} className={`sg-toast ${t.kind}`}>{t.text}</div>
