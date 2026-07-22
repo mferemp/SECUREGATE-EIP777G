@@ -928,3 +928,58 @@ select:focus {
   .sg-locked-stage { padding-top: 34px; padding-bottom: 170px; }
   .sg-footer { right: 14px !important; bottom: 12px !important; }
 }
+
+/* Auth-Gate input focus and copy-only ETH envelope */
+.sg-side-caution, .sg-warning, .sg-card--warning { overflow: visible; }
+.sg-admin-panel, .sg-admin-panel * { pointer-events: auto !important; }
+.sg-admin-panel { position: relative; z-index: 25; user-select: text; }
+.sg-admin-panel label { cursor: text; }
+.sg-admin-panel input {
+  user-select: text;
+  -webkit-user-select: text;
+  caret-color: var(--sg-cyan);
+}
+.sg-admin-panel input:disabled, .sg-admin-panel button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+.sg-admin-panel button[type='submit'] { min-height: 52px; }
+
+.sg-thanks-panel {
+  position: absolute;
+  right: 0;
+  bottom: 62px;
+  width: min(340px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 14px;
+  background: rgba(10, 12, 14, 0.97);
+  text-align: left;
+}
+.sg-thanks-panel, .sg-thanks-panel * { pointer-events: auto !important; }
+.sg-thanks-meta { display: grid; gap: 4px; }
+.sg-thanks-meta span {
+  color: var(--sg-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.sg-thanks-meta code { color: var(--sg-gold); font-size: 12px; word-break: break-all; }
+.sg-thanks-note { margin: 0; color: var(--sg-muted); font-size: 12px; line-height: 1.45; }
+.sg-thanks-link-button, .sg-thanks-panel button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid var(--sg-cyan);
+  border-radius: 5px;
+  background: rgba(83, 215, 207, 0.05);
+  color: var(--sg-cyan) !important;
+  text-decoration: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 900;
+}
+.sg-thanks-panel button:disabled { opacity: 0.42; cursor: not-allowed; }
+.sg-twitter-link { color: var(--sg-cyan) !important; text-decoration: none !important; }
+.sg-twitter-link:hover, .sg-thanks-link-button:hover { text-decoration: underline !important; }

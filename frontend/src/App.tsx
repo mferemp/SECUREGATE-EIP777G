@@ -29,8 +29,16 @@ const PROGRESS_STEPS = [
   'Verification check',
 ]
 
+const ETH_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/
+
 function isAddress(value: string): boolean {
-  return /^0x[0-9a-fA-F]{40}$/.test(value.trim())
+  return ETH_ADDRESS_RE.test(value.trim())
+}
+
+function shortAddress(value: string): string {
+  const clean = value.trim()
+  if (!ETH_ADDRESS_RE.test(clean)) return ''
+  return `${clean.slice(0, 6)}…${clean.slice(-4)}`
 }
 
 function isSignedTx(value: string): boolean {
@@ -60,6 +68,7 @@ export default function App() {
   const [adminK1, setAdminK1] = useState('')
   const [adminStatus, setAdminStatus] = useState('')
   const [adminPasskeyOut, setAdminPasskeyOut] = useState('')
+  const [adminBusy, setAdminBusy] = useState(false)
 
   const [deployerAddress, setDeployerAddress] = useState('')
   const [deployerKey, setDeployerKey] = useState('')
@@ -89,6 +98,7 @@ export default function App() {
   const dashboardUnlocked = authGateVerified
   const deviceLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
   const passkeyLocked = !passkeyLaneReady
+  const hasThankYouEthAddress = ETH_ADDRESS_RE.test(thanksAddress.trim())
 
   const selectedChainMeta = useMemo(
     () => (Array.isArray(chains) ? chains.find((c) => c.slug === selectedChain) : undefined),
@@ -102,7 +112,8 @@ export default function App() {
     fetchThanksConfig()
       .then((data) => {
         if (data?.handle) setThanksHandle(data.handle)
-        if (data?.copyAddress) setThanksAddress(data.copyAddress)
+        const configuredAddress = typeof data?.copyAddress === 'string' ? data.copyAddress.trim() : ''
+        setThanksAddress(ETH_ADDRESS_RE.test(configuredAddress) ? configuredAddress : '')
       })
       .catch(() => {})
   }, [])
@@ -126,6 +137,7 @@ export default function App() {
     setAuthMsg('')
     setAdminStatus('')
     setAdminPasskeyOut('')
+    setAdminBusy(false)
     setDeployStatus('')
     setFundingPanel('')
     setActiveStep(-1)
@@ -230,45 +242,45 @@ export default function App() {
   }
 
   async function generateAdminPasskey() {
-    const targetK1 = (adminK1 || k1Address).trim()
+    const targetK1 = (adminK1 || k1Address).trim().toLowerCase()
 
     if (!adminKey.trim()) {
-      setAdminStatus('Admin key required.')
+      setAdminStatus('Admin pass phrase required.')
       return
     }
-
     if (!isAddress(targetK1)) {
       setAdminStatus('Valid K1 address required.')
       return
     }
 
+    setAdminBusy(true)
+    setAdminStatus('Checking admin pass phrase...')
+
     try {
       const result = await generateAdminPasskeyRemote(adminKey.trim(), targetK1)
-
       if (result.passkey) {
+        setK1Address(targetK1)
         setAdminK1(targetK1)
         setPasskey(result.passkey)
         setAdminPasskeyOut(result.passkey)
         setPasskeyLaneReady(true)
         setPasskeyLaneReason('admin-generated')
-        setAuthGateVerified(true)
-        setVerifiedRoute('passkey')
-        setAdminStatus('Personal admin key verified. Auth-Gate overridden and K1-bound passkey generated.')
-        void loadDashboardStatus()
+        setAuthGateVerified(false)
+        setVerifiedRoute('none')
+        setAdminStatus('K1-bound passkey generated. Press PASSKEY + ENTER to unlock.')
+        setAuthMsg('Admin passkey generated for this K1. Press PASSKEY + ENTER to verify Auth-Gate.')
         return
       }
-
       if (result.disabled) {
         setAdminStatus(result.reason || 'Admin generation is not configured.')
         return
       }
-
       setAdminStatus(result.error || result.reason || 'Could not generate passkey.')
     } catch (error) {
       setAdminStatus(error instanceof Error ? error.message : 'Admin passkey request failed.')
+    } finally {
+      setAdminBusy(false)
     }
-
-    // DO NOT add setAuthGateVerified(true) here.
   }
 
   async function loadDashboardStatus() {
@@ -387,6 +399,20 @@ export default function App() {
     }
   }
 
+  async function copyThankYouAddress() {
+    const clean = thanksAddress.trim()
+    if (!ETH_ADDRESS_RE.test(clean)) {
+      setThanksStatus('No ETH thank-you address configured.')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(clean)
+      setThanksStatus(`ETH address copied: ${shortAddress(clean)}`)
+    } catch {
+      setThanksStatus('Could not copy ETH address.')
+    }
+  }
+
   async function sendThanks() {
     if (!thanksMessage.trim()) {
       setThanksStatus('Write a short note first.')
@@ -411,45 +437,60 @@ export default function App() {
   // shared admin panel markup (used in both locked + unlocked rail)
   function AdminPanel() {
     return (
-      <div className="sg-admin-panel">
+      <form
+        className="sg-admin-panel"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void generateAdminPasskey()
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
         <label>
-          <span>Admin key</span>
+          <span>Admin pass phrase</span>
           <input
+            name="securegate-admin-passphrase"
             value={adminKey}
-            onChange={(e) => setAdminKey(e.target.value)}
-            placeholder="Paste admin key..."
+            onChange={(event) => setAdminKey(event.target.value)}
+            placeholder="Paste admin pass phrase..."
             type="password"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={adminBusy}
           />
         </label>
-
         <label>
           <span>K1 address</span>
           <input
+            name="securegate-admin-k1"
             value={adminK1}
-            onChange={(e) => setAdminK1(e.target.value)}
+            onChange={(event) => setAdminK1(event.target.value)}
             placeholder="0x..."
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={adminBusy}
           />
         </label>
-
-        <button type="button" onClick={generateAdminPasskey}>
-          ADMIN OVERRIDE + GENERATE PASSKEY
+        <button type="submit" disabled={adminBusy}>
+          {adminBusy ? 'CHECKING...' : 'GENERATE K1 PASSKEY'}
         </button>
-
         {adminPasskeyOut && (
           <label>
             <span>Generated K1-bound passkey</span>
-            <input value={adminPasskeyOut} readOnly />
+            <input value={adminPasskeyOut} readOnly onFocus={(event) => event.currentTarget.select()} />
           </label>
         )}
-
         {adminPasskeyOut && (
           <button type="button" onClick={() => navigator.clipboard?.writeText(adminPasskeyOut)}>
-            COPY
+            COPY PASSKEY
           </button>
         )}
-
         {adminStatus && <p className="sg-status-line">{adminStatus}</p>}
-      </div>
+      </form>
     )
   }
 
@@ -1006,22 +1047,37 @@ export default function App() {
 
         {thanksOpen && (
           <div className="sg-thanks-panel">
-            <textarea
-              value={thanksMessage}
-              onChange={(e) => setThanksMessage(e.target.value)}
-              placeholder="Write a thank-you note"
-              maxLength={280}
-            />
-            <button type="button" onClick={sendThanks}>SEND NOTE</button>
-            <button
-              type="button"
-              onClick={async () => {
-                await navigator.clipboard.writeText(thanksHandle)
-                setThanksStatus('Address copied.')
-              }}
-            >
-              COPY ADDRESS
+            <div className="sg-thanks-meta">
+              <span>Creator</span>
+              <a className="sg-twitter-link" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
+                @hope_ology
+              </a>
+            </div>
+            <div className="sg-thanks-meta">
+              <span>ETH thank-you address</span>
+              <code>{hasThankYouEthAddress ? shortAddress(thanksAddress) : 'not configured'}</code>
+            </div>
+            {dashboardUnlocked ? (
+              <>
+                <textarea
+                  value={thanksMessage}
+                  onChange={(event) => setThanksMessage(event.target.value)}
+                  placeholder="Optional thank-you note"
+                  maxLength={280}
+                />
+                <button type="button" onClick={sendThanks}>SEND NOTE</button>
+              </>
+            ) : (
+              <p className="sg-thanks-note">
+                Unlock the dashboard to send a note. ETH address copy and creator link are always available.
+              </p>
+            )}
+            <button type="button" onClick={copyThankYouAddress} disabled={!hasThankYouEthAddress}>
+              COPY ETH ADDRESS
             </button>
+            <a className="sg-thanks-link-button" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
+              OPEN @hope_ology
+            </a>
             {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
           </div>
         )}

@@ -10,12 +10,28 @@
 const express = require('express');
 
 const router = express.Router();
+const ETH_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+
+function configuredThankYouAddress () {
+  const candidates = [
+    process.env.THANK_YOU_ETH_ADDRESS,
+    process.env.THANKYOU_ADDRESS,
+    process.env.THANK_YOU_COPY_ADDRESS
+  ];
+
+  for (const value of candidates) {
+    const clean = String(value || '').trim();
+    if (ETH_ADDRESS_RE.test(clean)) return clean;
+  }
+  return '';
+}
 
 router.get('/config', (_req, res) => {
   res.json({
     handle: process.env.THANKYOU_HANDLE || '@hope_ology',
-    network: process.env.THANKYOU_NETWORK || 'EVM',
-    copyAddress: process.env.THANKYOU_ADDRESS || ''
+    xUrl: process.env.THANKYOU_X_URL || 'https://x.com/hope_ology',
+    network: 'ETH',
+    copyAddress: configuredThankYouAddress()
   })
 })
 

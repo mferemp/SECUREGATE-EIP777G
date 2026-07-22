@@ -80,6 +80,7 @@ export function fetchChains(): Promise<{ chains: Chain[] }> {
 
 export function fetchThanksConfig(): Promise<{
   handle: string
+  xUrl: string
   network: string
   copyAddress: string
 }> {
