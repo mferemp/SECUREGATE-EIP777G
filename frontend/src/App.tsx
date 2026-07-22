@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   type Chain,
   antiAbuseEvent,
@@ -29,15 +29,17 @@ const PROGRESS_STEPS = [
   'Verification check',
 ]
 
-const ETH_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/
+const EVM_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/
+// Keep ETH_ADDRESS_RE as an alias so existing callers are unchanged.
+const ETH_ADDRESS_RE = EVM_ADDRESS_RE
 
 function isAddress(value: string): boolean {
-  return ETH_ADDRESS_RE.test(value.trim())
+  return EVM_ADDRESS_RE.test(value.trim())
 }
 
 function shortAddress(value: string): string {
   const clean = value.trim()
-  if (!ETH_ADDRESS_RE.test(clean)) return ''
+  if (!EVM_ADDRESS_RE.test(clean)) return ''
   return `${clean.slice(0, 6)}…${clean.slice(-4)}`
 }
 
@@ -94,16 +96,28 @@ export default function App() {
   const [thanksMessage, setThanksMessage] = useState('')
   const [thanksStatus, setThanksStatus] = useState('')
   const [thanksOpen, setThanksOpen] = useState(false)
+  const [thanksSending, setThanksSending] = useState(false)
+
+  const thanksTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const dashboardUnlocked = authGateVerified
   const deviceLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
   const passkeyLocked = !passkeyLaneReady
-  const hasThankYouEthAddress = ETH_ADDRESS_RE.test(thanksAddress.trim())
+  const hasThankYouEvmAddress = EVM_ADDRESS_RE.test(thanksAddress.trim())
+  // Legacy alias kept for any remaining references.
+  const hasThankYouEthAddress = hasThankYouEvmAddress
 
   const selectedChainMeta = useMemo(
     () => (Array.isArray(chains) ? chains.find((c) => c.slug === selectedChain) : undefined),
     [chains, selectedChain]
   )
+
+  useEffect(() => {
+    if (!thanksOpen) return
+    window.setTimeout(() => {
+      thanksTextareaRef.current?.focus()
+    }, 0)
+  }, [thanksOpen])
 
   useEffect(() => {
     fetchChains()
@@ -401,36 +415,44 @@ export default function App() {
 
   async function copyThankYouAddress() {
     const clean = thanksAddress.trim()
-    if (!ETH_ADDRESS_RE.test(clean)) {
-      setThanksStatus('No ETH thank-you address configured.')
+    if (!EVM_ADDRESS_RE.test(clean)) {
+      setThanksStatus('No EVM thank-you address configured.')
       return
     }
     try {
       await navigator.clipboard.writeText(clean)
-      setThanksStatus(`ETH address copied: ${shortAddress(clean)}`)
+      setThanksStatus(`EVM address copied: ${shortAddress(clean)}`)
     } catch {
-      setThanksStatus('Could not copy ETH address.')
+      setThanksStatus('Could not copy EVM address.')
     }
   }
 
   async function sendThanks() {
-    if (!thanksMessage.trim()) {
-      setThanksStatus('Write a short note first.')
+    const message = thanksMessage.trim()
+    if (!message) {
+      setThanksStatus('Write a note first.')
+      thanksTextareaRef.current?.focus()
       return
     }
-
+    setThanksSending(true)
+    setThanksStatus('Sending note...')
     try {
-      const data = await sendThanksRemote(thanksMessage.trim())
-
+      const data = await sendThanksRemote(message)
       if (data?.sent) {
-        setThanksStatus('Sent.')
-      } else if (data?.disabled) {
-        setThanksStatus('Thank-you sending is not configured.')
-      } else {
-        setThanksStatus(data?.reason || data?.error || 'Could not send.')
+        setThanksStatus('Thank-you note sent.')
+        setThanksMessage('')
+        window.setTimeout(() => thanksTextareaRef.current?.focus(), 0)
+        return
       }
-    } catch {
-      setThanksStatus('Could not send.')
+      if (data?.disabled) {
+        setThanksStatus(data.reason || 'Thank-you sending is not configured.')
+        return
+      }
+      setThanksStatus(data?.reason || data?.error || 'Could not send note.')
+    } catch (error) {
+      setThanksStatus(error instanceof Error ? error.message : 'Network error.')
+    } finally {
+      setThanksSending(false)
     }
   }
 
@@ -536,7 +558,12 @@ export default function App() {
                   className="sg-admin-circle"
                   type="button"
                   aria-label="Admin K1-bound passkey generator"
-                  onClick={() => setAdminPanelOpen((v) => !v)}
+                  aria-expanded={adminPanelOpen}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setAdminPanelOpen((v) => !v)
+                  }}
                 >
                   ⚫️-&apos;
                 </button>
@@ -588,7 +615,12 @@ export default function App() {
                     className="sg-admin-circle"
                     type="button"
                     aria-label="Admin K1-bound passkey generator"
-                    onClick={() => setAdminPanelOpen((v) => !v)}
+                    aria-expanded={adminPanelOpen}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setAdminPanelOpen((v) => !v)
+                    }}
                   >
                     ⚫️-&apos;
                   </button>
@@ -1046,49 +1078,63 @@ export default function App() {
         </button>
 
         {thanksOpen && (
-          <div className="sg-thanks-panel">
-            <div className="sg-thanks-meta">
-              <span>Creator</span>
-              <a className="sg-twitter-link" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
-                @hope_ology
-              </a>
-            </div>
-            <div className="sg-thanks-meta">
-              <span>ETH thank-you address</span>
-              <code>{hasThankYouEthAddress ? shortAddress(thanksAddress) : 'not configured'}</code>
-            </div>
-            {dashboardUnlocked ? (
-              <>
-                <textarea
-                  value={thanksMessage}
-                  onChange={(event) => setThanksMessage(event.target.value)}
-                  placeholder="Optional thank-you note"
-                  maxLength={280}
-                />
-                <button type="button" onClick={sendThanks}>SEND NOTE</button>
-              </>
-            ) : (
-              <p className="sg-thanks-note">
-                Unlock the dashboard to send a note. ETH address copy and creator link are always available.
-              </p>
-            )}
-            <button type="button" onClick={copyThankYouAddress} disabled={!hasThankYouEthAddress}>
-              COPY ETH ADDRESS
+          <div className="sg-thanks-panel" role="dialog" aria-label="Send thank-you note">
+            <label className="sg-thanks-compose">
+              <span>THANK-YOU NOTE</span>
+              <textarea
+                ref={thanksTextareaRef}
+                value={thanksMessage}
+                onChange={(e) => setThanksMessage(e.target.value)}
+                placeholder=""
+                aria-label="Write a thank-you note"
+                autoComplete="off"
+                spellCheck={true}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => void sendThanks()}
+              disabled={thanksSending}
+            >
+              {thanksSending ? 'SENDING...' : 'SEND NOTE'}
             </button>
-            <a className="sg-thanks-link-button" href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
+
+            <button
+              type="button"
+              onClick={() => void copyThankYouAddress()}
+              disabled={!hasThankYouEvmAddress}
+            >
+              COPY EVM ADDRESS
+            </button>
+
+            {hasThankYouEvmAddress && (
+              <code className="sg-thanks-address">{shortAddress(thanksAddress)}</code>
+            )}
+
+            <a
+              className="sg-thanks-link-button"
+              href="https://x.com/hope_ology"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               OPEN @hope_ology
             </a>
+
             {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
           </div>
         )}
 
         <div className="sg-built-by">BUILT BY EMP</div>
 
-        <div>
-          <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
-            {thanksHandle}
-          </a>
-        </div>
+        <a
+          className="sg-twitter-link"
+          href="https://x.com/hope_ology"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {thanksHandle || '@hope_ology'}
+        </a>
       </aside>
     </main>
   )
