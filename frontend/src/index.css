@@ -122,9 +122,11 @@ button:disabled {
 
 .sg-layout--locked {
   display: grid;
-  place-items: center;
-  padding-left: 24px;
-  padding-right: 24px;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 18px;
+  padding-left: 20px;
+  padding-right: 22px;
+  align-items: start;
 }
 
 .sg-layout--unlocked {
@@ -134,6 +136,14 @@ button:disabled {
   padding-left: 20px;
   padding-right: 22px;
 }
+
+/* ── inline text helpers ───────────────────────────────────────────────────── */
+
+.sg-cyan-text { color: var(--sg-cyan); font-weight: 900; }
+.sg-pink-text { color: var(--sg-pink); font-weight: 900; }
+.sg-danger-text { color: var(--sg-danger); font-weight: 900; }
+.sg-cyan-link { color: var(--sg-cyan); text-decoration: none; }
+.sg-cyan-link:hover { text-decoration: underline; }
 
 /* ── rail ──────────────────────────────────────────────────────────────────── */
 
@@ -146,6 +156,14 @@ button:disabled {
   padding: 18px;
   border: 1px solid var(--sg-line);
   background: rgba(12, 14, 16, 0.76);
+}
+
+.sg-rail--locked {
+  position: relative;
+  top: auto;
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
 }
 
 .sg-brand {
@@ -218,7 +236,8 @@ button:disabled {
 }
 
 .sg-main--locked {
-  width: min(860px, 100%);
+  width: 100%;
+  min-width: 0;
 }
 
 .sg-main--unlocked {
@@ -381,7 +400,7 @@ select:focus {
 
 .sg-standalone,
 .sg-warning {
-  width: min(760px, 100%);
+  width: 100%;
 }
 
 .sg-warning p {
@@ -611,7 +630,8 @@ select:focus {
 /* ── responsive ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
-  .sg-layout--unlocked {
+  .sg-layout--unlocked,
+  .sg-layout--locked {
     grid-template-columns: 1fr;
   }
 
@@ -620,6 +640,10 @@ select:focus {
     top: auto;
     height: auto;
     max-height: 50vh;
+  }
+
+  .sg-rail--locked {
+    max-height: none;
   }
 
   .sg-form-grid--deploy {

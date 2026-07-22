@@ -411,71 +411,31 @@ export default function App() {
         )}
 
         {!dashboardUnlocked && (
-          <section className="sg-main sg-main--locked">
-            <div className="sg-locked-stage">
-              <div className="sg-genesis-header">
-                <p>GENESIS OWNER AUTHENTICATION</p>
-                <span className="sg-dashboard-locked-label">DASHBOARD LOCKED</span>
+          <>
+            {/* Locked left rail */}
+            <aside className="sg-rail sg-rail--locked">
+              <div className="sg-brand">
+                <strong>SECUREGATE</strong>
+                <span>EIP-777G</span>
               </div>
 
-              <div className="sg-scan-orb-wrap">
-                <button
-                  className="sg-scan-orb"
-                  type="button"
-                  disabled={deviceLocked}
-                  onClick={() => deviceAttempt('scan')}
-                >
-                  SCAN
-                </button>
+              <div className="sg-rail-copy">
+                <p><b>Same device:</b> press SCAN.</p>
+                <p><b>Different device:</b> connect by USB first, then press LINK DEVICE.</p>
               </div>
 
-              <label className="sg-field sg-k1-field">
-                <span>K1 COMPROMISED WALLET ADDRESS</span>
-                <input
-                  value={k1Address}
-                  onChange={(e) => setK1Address(e.target.value)}
-                  placeholder="0x..."
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </label>
-
-              <div className="sg-auth-actions">
-                <button type="button" onClick={() => deviceAttempt('link')}>
-                  LINK DEVICE
-                </button>
-
-                <label>
-                  <span>PASSKEY</span>
-                  <input
-                    value={passkey}
-                    onChange={(e) => setPasskey(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) verifyPasskey()
-                    }}
-                    placeholder="Enter K1-bound passkey..."
-                    type="password"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                </label>
-
-                <button type="button" onClick={verifyPasskey}>
-                  PASSKEY + ENTER
-                </button>
-              </div>
-
-              {authMsg && <p className="sg-status-line">{authMsg}</p>}
-
-              <section className="sg-card sg-card--cyan sg-standalone">
-                <h2>STANDALONE OPERATION</h2>
-                <p>This dashboard executes the authentication flow client-side.</p>
-                <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
-                <p>Cryptographic checks run in your browser.</p>
-                <p>Chain checks stay backend-routed for security. Endpoint details never appear in the browser.</p>
+              <section className="sg-auth-copy">
+                <h2>AUTH-GATE</h2>
+                <p>Verifies the likely original K1 owner — not the thief.</p>
+                <p>Exact checks are hidden so they cannot be cloned or gamed.</p>
+                <p>Advisory check, not a final ruling. May miss valid ownership — attempt on up to <span className="sg-pink-text">3 devices per K1</span>. Markers can span all three.</p>
+                <p>Still unclear? DM <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer" className="sg-cyan-link">@hope_ology</a> on X with proof of ownership.</p>
+                <p>On success: K1 auto-fills, a <span className="sg-cyan-text">unique passkey</span> is issued for that K1. No further scans needed once issued.</p>
+                <p>All data auto-scrubs after verification <em>and</em> again at session end. <span className="sg-cyan-text">SCRUB</span> purges on demand.</p>
+                <p>Standalone. Nothing is stored, logged, or transmitted.</p>
               </section>
 
-              <section className="sg-card sg-card--warning sg-warning">
+              <section className="sg-card sg-card--warning sg-side-caution">
                 <div className="sg-caution-head">
                   <span>⚠</span>
                   <h2>CAUTION</h2>
@@ -489,13 +449,87 @@ export default function App() {
                     ⚫️-&apos;
                   </button>
                 </div>
-
-                <p>Use at your own risk. K2 authorizes only. K3 is the immutable clean drop destination.</p>
-
+                <p>Use at your own risk.<br />Hope for the best.<br />If you&apos;re a hacker? <span className="sg-danger-text">Get fucked.</span></p>
                 {adminPanelOpen && <AdminPanel />}
               </section>
-            </div>
-          </section>
+
+              <div className="sg-rail-status">
+                <span>777G V1.0</span>
+                <span>SECURE</span>
+              </div>
+            </aside>
+
+            {/* Locked main */}
+            <section className="sg-main sg-main--locked">
+              <div className="sg-locked-stage">
+                <div className="sg-genesis-header">
+                  <p>GENESIS OWNER AUTHENTICATION</p>
+                  <span className="sg-dashboard-locked-label">DASHBOARD LOCKED</span>
+                </div>
+
+                <div className="sg-scan-orb-wrap">
+                  <button
+                    className="sg-scan-orb"
+                    type="button"
+                    disabled={deviceLocked}
+                    onClick={() => deviceAttempt('scan')}
+                  >
+                    SCAN
+                  </button>
+                </div>
+
+                <label className="sg-field sg-k1-field">
+                  <span>K1 COMPROMISED WALLET ADDRESS</span>
+                  <input
+                    value={k1Address}
+                    onChange={(e) => setK1Address(e.target.value)}
+                    placeholder="0x..."
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </label>
+
+                <div className="sg-auth-actions">
+                  <button type="button" onClick={() => deviceAttempt('link')}>
+                    LINK DEVICE
+                  </button>
+
+                  <label>
+                    <span>PASSKEY</span>
+                    <input
+                      value={passkey}
+                      onChange={(e) => setPasskey(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing) verifyPasskey()
+                      }}
+                      placeholder="Enter K1-bound passkey..."
+                      type="password"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
+
+                  <button type="button" onClick={verifyPasskey}>
+                    PASSKEY + ENTER
+                  </button>
+                </div>
+
+                {authMsg && <p className="sg-status-line">{authMsg}</p>}
+
+                <section className="sg-card sg-card--cyan sg-standalone">
+                  <h2>STANDALONE OPERATION</h2>
+                  <p>This dashboard executes the authentication flow client-side.</p>
+                  <p>You are not submitting K1 authentication data to any operator, server, or third party. Cryptographic checks run in your browser.</p>
+                  <p>Chain checks stay backend-routed for security. Endpoint details never appear in the browser.</p>
+                </section>
+
+                <section className="sg-card sg-card--warning sg-warning">
+                  <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
+                  <p>PLUS, YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
+                </section>
+              </div>
+            </section>
+          </>
         )}
 
         {dashboardUnlocked && (
