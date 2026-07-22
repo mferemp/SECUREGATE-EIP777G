@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api } from './lib/api'
-
-type Chain = {
-  slug: string
-  name: string
-  chainId: number
-  nativeSymbol: string
-  deploySupported: boolean
-}
+import {
+  type Chain,
+  antiAbuseEvent,
+  deploySignedTx,
+  fetchChains,
+  fetchFunding,
+  fetchThanksConfig,
+  generateAdminPasskeyRemote,
+  sendThanksRemote,
+  traceEvent,
+  verifyPasskeyRemote,
+} from './lib/securegateApi'
 
 type DashboardTab = 'deployment' | 'protection' | 'status'
 
@@ -79,15 +82,9 @@ export default function App() {
   }, [chains, selectedChain])
 
   useEffect(() => {
-    fetch(api('chains'))
-      .then((res) => res.json())
-      .then((data) => {
-        setChains(Array.isArray(data?.chains) ? data.chains : [])
-      })
-      .catch(() => setChains([]))
+    fetchChains().then(setChains).catch(() => setChains([]))
 
-    fetch(api('thank-you/config'))
-      .then((res) => res.json())
+    fetchThanksConfig()
       .then((data) => {
         if (data?.handle) setThanksHandle(data.handle)
         if (data?.copyAddress) setThanksAddress(data.copyAddress)
@@ -133,27 +130,11 @@ export default function App() {
   }
 
   async function trace(kind: string) {
-    try {
-      await fetch(api(`trace/${kind}`), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ k1: k1Address || 'anon' })
-      })
-    } catch {
-      // non-blocking
-    }
+    await traceEvent(kind, k1Address)
   }
 
   async function antiAbuse(action: string) {
-    try {
-      await fetch(api('anti-abuse/event'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action, subject: k1Address || 'anon' })
-      })
-    } catch {
-      // non-blocking
-    }
+    await antiAbuseEvent(action, k1Address)
   }
 
   async function deviceAttempt(kind: 'scan' | 'link') {
@@ -203,31 +184,23 @@ export default function App() {
     await antiAbuse('passkey-verify')
 
     try {
-      const res = await fetch(api('passkeys/verify'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          k1: k1Address.trim(),
-          passkey: passkey.trim()
-        })
-      })
+      const result = await verifyPasskeyRemote(k1Address.trim(), passkey.trim())
 
-      const data = await res.json().catch(() => ({}))
-
-      if (data?.verified === true) {
+      if (result.verified === true) {
         setAuthGateVerified(true)
         setVerifiedRoute('passkey')
+        setDashboardTab('deployment')
         setAuthMsg('AUTH-GATE verified. Dashboard unlocked.')
         return
       }
 
       setAuthGateVerified(false)
       setVerifiedRoute('none')
-      setAuthMsg(data?.reason || data?.error || 'Passkey not verified.')
-    } catch {
+      setAuthMsg(result.reason || result.error || 'Passkey not verified.')
+    } catch (error) {
       setAuthGateVerified(false)
       setVerifiedRoute('none')
-      setAuthMsg('Passkey verification failed.')
+      setAuthMsg(error instanceof Error ? error.message : 'Passkey verification failed.')
     }
   }
 
@@ -245,22 +218,14 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(api('admin-passkey/generate'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          adminKey: adminKey.trim(),
-          k1: targetK1
-        })
-      })
-
-      const data = await res.json().catch(() => ({}))
+      const data = await generateAdminPasskeyRemote(adminKey.trim(), targetK1)
 
       if (data?.passkey) {
         setAdminK1(targetK1)
         setPasskey(data.passkey)
         setGeneratedPasskey(data.passkey)
         setAdminStatus('Generated K1-bound passkey. Press ENTER in PASSKEY to unlock.')
+        // no setAuthGateVerified(true) — admin generation does not unlock the dashboard
         return
       }
 
@@ -285,10 +250,9 @@ export default function App() {
     setActiveStep(0)
 
     try {
-      const res = await fetch(api(`funding/${selectedChain}`))
-      const data = await res.json().catch(() => ({}))
+      const { ok, data } = await fetchFunding(selectedChain)
 
-      if (!res.ok) {
+      if (!ok) {
         setFundingStatus(data?.error || 'Funding check unavailable.')
         return
       }
@@ -332,17 +296,9 @@ export default function App() {
     setActiveStep(2)
 
     try {
-      const res = await fetch(api(`deploy/${selectedChain}`), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          signedTx: signedTx.trim()
-        })
-      })
+      const { ok, data } = await deploySignedTx(selectedChain, signedTx.trim())
 
-      const data = await res.json().catch(() => ({}))
-
-      if (!res.ok) {
+      if (!ok) {
         setDeployStatus(data?.error || 'Broadcast rejected.')
         return
       }
@@ -366,15 +322,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(api('thank-you/send'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          message: thanksMessage.trim()
-        })
-      })
-
-      const data = await res.json().catch(() => ({}))
+      const data = await sendThanksRemote(thanksMessage.trim())
 
       if (data?.sent) {
         setThanksStatus('Sent.')
