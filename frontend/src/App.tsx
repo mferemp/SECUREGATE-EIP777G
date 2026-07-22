@@ -883,7 +883,7 @@ export default function App() {
                   {fundingPanel && <p className="sg-status-line">{fundingPanel}</p>}
 
                   <button className="sg-primary-action" type="button" onClick={lockGateIn}>
-                    DEPLOY EIP-777G BUNDLE
+                    SIGN &amp; BROADCAST DEPLOYMENT
                   </button>
 
                   {deployStatus && <p className="sg-status-line">{deployStatus}</p>}
