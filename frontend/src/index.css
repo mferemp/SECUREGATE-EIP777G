@@ -907,10 +907,13 @@ select:focus {
 
 .sg-footer {
   position: fixed !important;
+  inset: auto 24px 18px auto !important;
   right: 24px !important;
   bottom: 18px !important;
-  z-index: 1000 !important;
+  z-index: 2147483647 !important;
   pointer-events: none !important;
+  transform: translateZ(0);
+  contain: layout paint;
 }
 .sg-thankyou-button, .sg-twitter-link, .sg-footer a, .sg-thanks-panel { pointer-events: auto !important; }
 .sg-thankyou-button {

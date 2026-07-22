@@ -251,7 +251,10 @@ export default function App() {
         setAdminPasskeyOut(result.passkey)
         setPasskeyLaneReady(true)
         setPasskeyLaneReason('admin-generated')
-        setAdminStatus('Generated K1-bound passkey. Press PASSKEY + ENTER to unlock.')
+        setAuthGateVerified(true)
+        setVerifiedRoute('passkey')
+        setAdminStatus('Personal admin key verified. Auth-Gate overridden and K1-bound passkey generated.')
+        void loadDashboardStatus()
         return
       }
 
@@ -385,11 +388,6 @@ export default function App() {
   }
 
   async function sendThanks() {
-    if (!dashboardUnlocked) {
-      setThanksStatus('Unlock first.')
-      return
-    }
-
     if (!thanksMessage.trim()) {
       setThanksStatus('Write a short note first.')
       return
@@ -434,7 +432,7 @@ export default function App() {
         </label>
 
         <button type="button" onClick={generateAdminPasskey}>
-          GENERATE PASSKEY
+          ADMIN OVERRIDE + GENERATE PASSKEY
         </button>
 
         {adminPasskeyOut && (
@@ -1008,25 +1006,23 @@ export default function App() {
 
         {thanksOpen && (
           <div className="sg-thanks-panel">
-            {!dashboardUnlocked ? (
-              <>
-                <p>Unlock the dashboard to send a note.</p>
-                <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
-                  Open @hope_ology
-                </a>
-              </>
-            ) : (
-              <>
-                <textarea
-                  value={thanksMessage}
-                  onChange={(e) => setThanksMessage(e.target.value)}
-                  placeholder="Optional thank-you note"
-                  maxLength={280}
-                />
-                <button type="button" onClick={sendThanks}>SEND</button>
-                {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
-              </>
-            )}
+            <textarea
+              value={thanksMessage}
+              onChange={(e) => setThanksMessage(e.target.value)}
+              placeholder="Write a thank-you note"
+              maxLength={280}
+            />
+            <button type="button" onClick={sendThanks}>SEND NOTE</button>
+            <button
+              type="button"
+              onClick={async () => {
+                await navigator.clipboard.writeText(thanksHandle)
+                setThanksStatus('Address copied.')
+              }}
+            >
+              COPY ADDRESS
+            </button>
+            {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
           </div>
         )}
 
