@@ -528,7 +528,12 @@ export default function App() {
         <main className={`sg-main ${dashboardUnlocked ? 'sg-main--unlocked' : 'sg-main--locked'}`}>
           {!dashboardUnlocked ? (
             <section className="sg-locked-stage" aria-label="Locked dashboard view">
-              <section className="sg-standalone">
+              <div className="sg-genesis-header">
+                <h2>GENESIS OWNER AUTHENTICATION</h2>
+                <div className="sg-dashboard-locked-label">DASHBOARD LOCKED</div>
+              </div>
+
+              <section className="sg-standalone sg-card sg-card--cyan">
                 <h1>STANDALONE OPERATION</h1>
                 <p>This dashboard executes the authentication flow client-side.</p>
                 <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
@@ -537,7 +542,7 @@ export default function App() {
                 <p>Endpoint details never appear in the browser.</p>
               </section>
 
-              <section className="sg-warning">
+              <section className="sg-warning sg-card sg-card--warning">
                 <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
                 <p>PLUS, YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
               </section>
@@ -883,7 +888,7 @@ export default function App() {
         </main>
       </div>
 
-      <aside className="sg-thankyou-float" aria-label="Thank you">
+      <aside className="sg-footer sg-thankyou-float" aria-label="Thank you">
         {dashboardUnlocked && (
           <div className="sg-thanks-panel">
             <textarea
