@@ -1,30 +1,4 @@
-'use strict'
-
-// securegateApi.ts
-// All backend calls go through this module.
-// App.tsx must not contain scattered fetch('/api/...') calls.
-
 import { api } from './api'
-
-// ── shared ────────────────────────────────────────────────────────────────────
-
-async function post<T = Record<string, unknown>>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(api(path), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body)
-  })
-  const data: T = await res.json().catch(() => ({} as T))
-  return data
-}
-
-async function get<T = Record<string, unknown>>(path: string): Promise<T> {
-  const res = await fetch(api(path))
-  const data: T = await res.json().catch(() => ({} as T))
-  return data
-}
-
-// ── chains ────────────────────────────────────────────────────────────────────
 
 export type Chain = {
   slug: string
@@ -34,126 +8,134 @@ export type Chain = {
   deploySupported: boolean
 }
 
-export async function fetchChains(): Promise<Chain[]> {
-  const data = await get<{ chains?: Chain[] }>('chains')
-  return Array.isArray(data?.chains) ? data.chains : []
-}
-
-// ── thank-you config ──────────────────────────────────────────────────────────
-
-export type ThanksConfig = {
-  handle?: string
-  copyAddress?: string
-}
-
-export async function fetchThanksConfig(): Promise<ThanksConfig> {
-  return get<ThanksConfig>('thank-you/config')
-}
-
-// ── passkey register ──────────────────────────────────────────────────────────
-
-export type RegisterResult = {
-  registered?: boolean
-  error?: string
-}
-
-export async function registerPasskeyRemote(k1: string, passkey: string): Promise<RegisterResult> {
-  return post<RegisterResult>('passkeys/register', { k1, passkey })
-}
-
-// ── passkey verify ────────────────────────────────────────────────────────────
-
-export type VerifyResult = {
-  verified?: boolean
+export type VerifyPasskeyResult = {
+  verified: boolean
   reason?: string
   error?: string
 }
-
-export async function verifyPasskeyRemote(k1: string, passkey: string): Promise<VerifyResult> {
-  return post<VerifyResult>('passkeys/verify', { k1, passkey })
-}
-
-// ── admin passkey generate ────────────────────────────────────────────────────
 
 export type AdminPasskeyResult = {
-  passkey?: string
+  generated?: boolean
   disabled?: boolean
+  passkey?: string
   reason?: string
   error?: string
 }
 
-export async function generateAdminPasskeyRemote(
+export type FundingEstimate = {
+  chain: string
+  nativeSymbol: string
+  gasPriceWei: string
+  estGas: string
+  estimateNative: string
+}
+
+export class ApiError extends Error {
+  status: number
+  data: unknown
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers)
+
+  if (init.body && !headers.has('content-type')) {
+    headers.set('content-type', 'application/json')
+  }
+
+  const response = await fetch(api(path), { ...init, headers })
+
+  const text = await response.text()
+  let data: unknown = {}
+
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = { raw: text }
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      data && typeof data === 'object' && 'error' in data
+        ? String((data as { error?: unknown }).error)
+        : `request failed: ${response.status}`
+
+    throw new ApiError(message, response.status, data)
+  }
+
+  return data as T
+}
+
+export function fetchChains(): Promise<{ chains: Chain[] }> {
+  return request('chains')
+}
+
+export function fetchThanksConfig(): Promise<{
+  handle: string
+  network: string
+  copyAddress: string
+}> {
+  return request('thank-you/config')
+}
+
+export function traceEvent(kind: string, subject: string): Promise<unknown> {
+  return request(`trace/${encodeURIComponent(kind)}`, {
+    method: 'POST',
+    body: JSON.stringify({ subject }),
+  }).catch(() => {})
+}
+
+export function antiAbuseEvent(action: string, subject: string): Promise<unknown> {
+  return request('anti-abuse/event', {
+    method: 'POST',
+    body: JSON.stringify({ action, subject }),
+  }).catch(() => {})
+}
+
+export function verifyPasskeyRemote(k1: string, passkey: string): Promise<VerifyPasskeyResult> {
+  return request('passkeys/verify', {
+    method: 'POST',
+    body: JSON.stringify({ k1, passkey }),
+  })
+}
+
+export function generateAdminPasskeyRemote(
   adminKey: string,
   k1: string
 ): Promise<AdminPasskeyResult> {
-  return post<AdminPasskeyResult>('admin-passkey/generate', { adminKey, k1 })
-}
-
-// ── funding estimate ──────────────────────────────────────────────────────────
-
-export type FundingResult = {
-  estimateNative?: string
-  nativeSymbol?: string
-  error?: string
-}
-
-export async function fetchFunding(chain: string): Promise<{ ok: boolean; data: FundingResult }> {
-  const res = await fetch(api(`funding/${chain}`))
-  const data: FundingResult = await res.json().catch(() => ({}))
-  return { ok: res.ok, data }
-}
-
-// ── deploy signedTx ───────────────────────────────────────────────────────────
-// Backend receives signedTx only. No private keys, no seeds, no K2/K3 private
-// material, no override destination.
-
-export type DeployResult = {
-  txHash?: string
-  error?: string
-}
-
-export async function deploySignedTx(
-  chain: string,
-  signedTx: string
-): Promise<{ ok: boolean; data: DeployResult }> {
-  const res = await fetch(api(`deploy/${chain}`), {
+  return request('admin-passkey/generate', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ signedTx })
+    body: JSON.stringify({ adminKey, k1 }),
   })
-  const data: DeployResult = await res.json().catch(() => ({}))
-  return { ok: res.ok, data }
 }
 
-// ── thank-you send ────────────────────────────────────────────────────────────
+export function fetchFunding(chain: string): Promise<FundingEstimate> {
+  return request(`funding/${encodeURIComponent(chain)}`)
+}
 
-export type SendThanksResult = {
+export function deploySignedTx(chain: string, signedTx: string): Promise<{ txHash: string }> {
+  return request(`deploy/${encodeURIComponent(chain)}`, {
+    method: 'POST',
+    body: JSON.stringify({ signedTx: signedTx.trim() }),
+  })
+}
+
+export function sendThanksRemote(message: string): Promise<{
   sent?: boolean
   disabled?: boolean
   reason?: string
   error?: string
-}
-
-export async function sendThanksRemote(message: string): Promise<SendThanksResult> {
-  return post<SendThanksResult>('thank-you/send', { message })
-}
-
-// ── trace (non-blocking) ──────────────────────────────────────────────────────
-
-export async function traceEvent(kind: string, k1: string): Promise<void> {
-  try {
-    await post(`trace/${kind}`, { k1: k1 || 'anon' })
-  } catch {
-    // non-blocking
-  }
-}
-
-// ── anti-abuse (non-blocking) ─────────────────────────────────────────────────
-
-export async function antiAbuseEvent(action: string, subject: string): Promise<void> {
-  try {
-    await post('anti-abuse/event', { action, subject: subject || 'anon' })
-  } catch {
-    // non-blocking
-  }
+}> {
+  return request('thank-you/send', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  })
 }

@@ -18,10 +18,9 @@ const MAX_DEVICE_ATTEMPTS = 3
 
 const PROGRESS_STEPS = [
   'Funding calculation',
-  'Prepare K1 session',
-  'Deploy contract',
-  'Confirm protection',
-  'Verify protection'
+  'Prepare signed transaction',
+  'Broadcast signedTx',
+  'Confirm deployment',
 ]
 
 function isAddress(value: string): boolean {
@@ -30,12 +29,6 @@ function isAddress(value: string): boolean {
 
 function isSignedTx(value: string): boolean {
   return /^0x[0-9a-fA-F]{100,}$/.test(value.trim())
-}
-
-function shortAddress(value: string): string {
-  const clean = value.trim()
-  if (!isAddress(clean)) return ''
-  return `${clean.slice(0, 10)}…${clean.slice(-6)}`
 }
 
 export default function App() {
@@ -50,11 +43,13 @@ export default function App() {
   const [authGateVerified, setAuthGateVerified] = useState(false)
   const [verifiedRoute, setVerifiedRoute] = useState<'none' | 'passkey'>('none')
 
-  const [adminOpen, setAdminOpen] = useState(false)
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('deployment')
+
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false)
   const [adminKey, setAdminKey] = useState('')
   const [adminK1, setAdminK1] = useState('')
   const [adminStatus, setAdminStatus] = useState('')
-  const [generatedPasskey, setGeneratedPasskey] = useState('')
+  const [adminPasskeyOut, setAdminPasskeyOut] = useState('')
 
   const [deployerAddress, setDeployerAddress] = useState('')
   const [deployerKey, setDeployerKey] = useState('')
@@ -63,27 +58,26 @@ export default function App() {
   const [k3Address, setK3Address] = useState('')
   const [signedTx, setSignedTx] = useState('')
 
-  const [fundingStatus, setFundingStatus] = useState('')
+  const [fundingPanel, setFundingPanel] = useState('')
   const [deployStatus, setDeployStatus] = useState('')
   const [activeStep, setActiveStep] = useState(-1)
-
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('deployment')
 
   const [thanksHandle, setThanksHandle] = useState('@hope_ology')
   const [thanksAddress, setThanksAddress] = useState('')
   const [thanksMessage, setThanksMessage] = useState('')
   const [thanksStatus, setThanksStatus] = useState('')
+  const [thanksOpen, setThanksOpen] = useState(false)
 
   const dashboardUnlocked = authGateVerified
   const deviceLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
 
-  const selectedChainMeta = useMemo(() => {
-    return chains.find((chain) => chain.slug === selectedChain)
-  }, [chains, selectedChain])
+  const selectedChainMeta = useMemo(
+    () => chains.find((c) => c.slug === selectedChain),
+    [chains, selectedChain]
+  )
 
   useEffect(() => {
     fetchChains().then(setChains).catch(() => setChains([]))
-
     fetchThanksConfig()
       .then((data) => {
         if (data?.handle) setThanksHandle(data.handle)
@@ -92,49 +86,31 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  function jumpTo(id: string) {
-    document.getElementById(id)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    })
-  }
-
   function scrub() {
-    setK1Address('')
-    setPasskey('')
-    setAuthMsg('')
-    setDeviceAttempts(0)
     setAuthGateVerified(false)
     setVerifiedRoute('none')
-
-    setAdminOpen(false)
+    setDashboardTab('deployment')
+    setPasskey('')
+    setAuthMsg('')
+    setAdminStatus('')
+    setAdminPasskeyOut('')
+    setDeployStatus('')
+    setFundingPanel('')
+    setActiveStep(-1)
+    setK1Address('')
+    setDeviceAttempts(0)
+    setAdminPanelOpen(false)
     setAdminKey('')
     setAdminK1('')
-    setAdminStatus('')
-    setGeneratedPasskey('')
-
     setDeployerAddress('')
     setDeployerKey('')
     setK1SessionKey('')
     setK2Address('')
     setK3Address('')
     setSignedTx('')
-
-    setFundingStatus('')
-    setDeployStatus('')
-    setActiveStep(-1)
-
     setThanksMessage('')
     setThanksStatus('')
-    setDashboardTab('deployment')
-  }
-
-  async function trace(kind: string) {
-    await traceEvent(kind, k1Address)
-  }
-
-  async function antiAbuse(action: string) {
-    await antiAbuseEvent(action, k1Address)
+    setThanksOpen(false)
   }
 
   async function deviceAttempt(kind: 'scan' | 'link') {
@@ -148,12 +124,15 @@ export default function App() {
       return
     }
 
-    await trace(kind === 'scan' ? 'scan' : 'link-device')
-    await antiAbuse(kind === 'scan' ? 'scan' : 'link-device')
+    try {
+      await traceEvent(kind === 'scan' ? 'scan' : 'link-device', k1Address)
+      await antiAbuseEvent(kind === 'scan' ? 'scan' : 'link-device', k1Address)
+    } catch {
+      // non-blocking
+    }
 
     const next = deviceAttempts + 1
     setDeviceAttempts(next)
-
     setAuthGateVerified(false)
     setVerifiedRoute('none')
 
@@ -179,9 +158,6 @@ export default function App() {
       setAuthMsg('Enter the K1-bound passkey.')
       return
     }
-
-    await trace('passkey-verify')
-    await antiAbuse('passkey-verify')
 
     try {
       const result = await verifyPasskeyRemote(k1Address.trim(), passkey.trim())
@@ -218,51 +194,46 @@ export default function App() {
     }
 
     try {
-      const data = await generateAdminPasskeyRemote(adminKey.trim(), targetK1)
+      const result = await generateAdminPasskeyRemote(adminKey.trim(), targetK1)
 
-      if (data?.passkey) {
+      if (result.passkey) {
         setAdminK1(targetK1)
-        setPasskey(data.passkey)
-        setGeneratedPasskey(data.passkey)
-        setAdminStatus('Generated K1-bound passkey. Press ENTER in PASSKEY to unlock.')
-        // no setAuthGateVerified(true) — admin generation does not unlock the dashboard
+        setPasskey(result.passkey)
+        setAdminPasskeyOut(result.passkey)
+        setAdminStatus('Generated K1-bound passkey. Press PASSKEY + ENTER to unlock.')
         return
       }
 
-      if (data?.disabled) {
-        setAdminStatus(data.reason || 'Admin generation is not configured.')
+      if (result.disabled) {
+        setAdminStatus(result.reason || 'Admin generation is not configured.')
         return
       }
 
-      setAdminStatus(data?.error || data?.reason || 'Could not generate passkey.')
-    } catch {
-      setAdminStatus('Admin passkey request failed.')
+      setAdminStatus(result.error || result.reason || 'Could not generate passkey.')
+    } catch (error) {
+      setAdminStatus(error instanceof Error ? error.message : 'Admin passkey request failed.')
     }
+
+    // DO NOT add setAuthGateVerified(true) here.
   }
 
   async function calculateFunding() {
     if (!selectedChain) {
-      setFundingStatus('Select a chain first.')
+      setFundingPanel('Select a chain first.')
       return
     }
 
-    setFundingStatus('Calculating funding...')
+    setFundingPanel('Calculating...')
     setActiveStep(0)
 
     try {
-      const { ok, data } = await fetchFunding(selectedChain)
-
-      if (!ok) {
-        setFundingStatus(data?.error || 'Funding check unavailable.')
-        return
-      }
-
-      setFundingStatus(
-        `Estimated funding: ${data.estimateNative || 'unknown'} ${data.nativeSymbol || selectedChainMeta?.nativeSymbol || ''}`
+      const data = await fetchFunding(selectedChain)
+      setFundingPanel(
+        `Estimated: ${data.estimateNative || 'unknown'} ${data.nativeSymbol || selectedChainMeta?.nativeSymbol || ''}`
       )
       setActiveStep(1)
-    } catch {
-      setFundingStatus('Funding check failed.')
+    } catch (error) {
+      setFundingPanel(error instanceof Error ? error.message : 'Funding check failed.')
     }
   }
 
@@ -296,17 +267,11 @@ export default function App() {
     setActiveStep(2)
 
     try {
-      const { ok, data } = await deploySignedTx(selectedChain, signedTx.trim())
-
-      if (!ok) {
-        setDeployStatus(data?.error || 'Broadcast rejected.')
-        return
-      }
-
+      const result = await deploySignedTx(selectedChain, signedTx.trim())
       setActiveStep(4)
-      setDeployStatus(`Complete. txHash: ${data.txHash || 'submitted'}`)
-    } catch {
-      setDeployStatus('Broadcast failed.')
+      setDeployStatus(`Complete. txHash: ${result.txHash || 'submitted'}`)
+    } catch (error) {
+      setDeployStatus(error instanceof Error ? error.message : 'Broadcast failed.')
     }
   }
 
@@ -336,478 +301,292 @@ export default function App() {
     }
   }
 
+  // shared admin panel markup (used in both locked + unlocked rail)
+  function AdminPanel() {
+    return (
+      <div className="sg-admin-panel">
+        <label>
+          <span>Admin key</span>
+          <input
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            placeholder="Paste admin key..."
+            type="password"
+          />
+        </label>
+
+        <label>
+          <span>K1 address</span>
+          <input
+            value={adminK1}
+            onChange={(e) => setAdminK1(e.target.value)}
+            placeholder="0x..."
+          />
+        </label>
+
+        <button type="button" onClick={generateAdminPasskey}>
+          GENERATE PASSKEY
+        </button>
+
+        {adminPasskeyOut && (
+          <label>
+            <span>Generated K1-bound passkey</span>
+            <input value={adminPasskeyOut} readOnly />
+          </label>
+        )}
+
+        {adminPasskeyOut && (
+          <button type="button" onClick={() => navigator.clipboard?.writeText(adminPasskeyOut)}>
+            COPY
+          </button>
+        )}
+
+        {adminStatus && <p className="sg-status-line">{adminStatus}</p>}
+      </div>
+    )
+  }
+
   return (
-    <div className="sg-root">
+    <main className={`sg-shell ${dashboardUnlocked ? 'sg-shell--unlocked' : 'sg-shell--locked'}`}>
       <header className="sg-topbar">
-        <div className="sg-brand">
-          <span>SECUREGATE</span>
-          <small>EIP-777G</small>
-        </div>
-
-        <div className="sg-topbar-spacer" />
-
+        <div className="sg-topbar-line" />
         <button className="sg-scrub" type="button" onClick={scrub}>
           SCRUB
         </button>
-
-        <button className="sg-power" type="button" aria-label="Power">
+        <button className="sg-power" type="button" onClick={scrub} aria-label="Power / scrub session">
           ⏻
         </button>
       </header>
 
-      <div className={`sg-layout ${dashboardUnlocked ? 'sg-layout--unlocked' : 'sg-layout--locked'}`}>
-        <aside className="sg-sidebar" aria-label="Auth-Gate rail">
-          <button
-            id="scan-authenticator"
-            className="sg-scan"
-            type="button"
-            disabled={deviceLocked}
-            onClick={() => deviceAttempt('scan')}
-          >
-            <span>SCAN</span>
-          </button>
-          <div className="sg-device-copy">
-            <p>
-              <strong>Same device:</strong> press SCAN.
-            </p>
-            <p>
-              <strong>Different device:</strong> connect by USB first, then press LINK DEVICE.
-            </p>
-          </div>
-
-          <div className="sg-rail-rule" />
-
-          <section className="sg-auth-copy">
-            <h2>AUTH-GATE</h2>
-
-            <p>Verifies the real K1 owner — not the thief.</p>
-            <p>Hidden checks prevent cloning or replay.</p>
-            <p>
-              Advisory check only — attempt on up to <strong>3 devices per K1.</strong>
-            </p>
-            <p>
-              Still blocked? DM <a href="https://x.com/hope_ology">@hope_ology</a> with proof of ownership.
-            </p>
-            <p>
-              On success: K1 auto-fills and a <mark>unique passkey</mark> binds to that K1.
-            </p>
-            <p>SCRUB purges local session state.</p>
-          </section>
-
-          <label className="sg-label" htmlFor="authgate-k1">
-            K1 COMPROMISED WALLET ADDRESS
-          </label>
-          <input
-            id="authgate-k1"
-            className="sg-input"
-            value={k1Address}
-            onChange={(event) => setK1Address(event.target.value)}
-            placeholder="0x..."
-            autoComplete="off"
-            spellCheck={false}
-          />
-
-          <button
-            id="link-device"
-            className="sg-link-device"
-            type="button"
-            disabled={deviceLocked}
-            onClick={() => deviceAttempt('link')}
-          >
-            LINK DEVICE
-          </button>
-
-          <label className="sg-label" htmlFor="passkey-input">
-            PASSKEY
-          </label>
-          <div className="sg-passkey-row">
-            <input
-              id="passkey-input"
-              className="sg-input"
-              type="password"
-              value={passkey}
-              onChange={(event) => setPasskey(event.target.value)}
-              placeholder="K1-bound passkey"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button id="passkey-enter" className="sg-enter" type="button" onClick={verifyPasskey}>
-              ENTER
-            </button>
-          </div>
-
-          <section className="sg-side-caution" aria-label="Caution and admin">
-            <div className="sg-caution-head">
-              <h2>⚠ CAUTION</h2>
-
-              <button
-                id="admin-black-circle"
-                className="sg-admin-circle"
-                type="button"
-                aria-label="Admin K1-bound passkey generator"
-                onClick={() => setAdminOpen((value) => !value)}
-              >
-                ⚫️-&apos;
-              </button>
+      <section className={`sg-layout ${dashboardUnlocked ? 'sg-layout--unlocked' : 'sg-layout--locked'}`}>
+        {dashboardUnlocked && (
+          <aside className="sg-rail">
+            <div className="sg-brand">
+              <strong>SECUREGATE</strong>
+              <span>EIP-777G</span>
             </div>
 
-            <p>Use at your own risk.</p>
-            <p>Hope for the best.</p>
-            <p>
-              If you&apos;re a hacker? <span>Get fucked.</span>
-            </p>
+            <div className="sg-rail-copy">
+              <p><b>Same device:</b> press SCAN.</p>
+              <p><b>Different device:</b> connect by USB first, then press LINK DEVICE.</p>
+            </div>
 
-            {adminOpen && (
-              <div className="sg-admin-panel">
-                <label className="sg-label" htmlFor="admin-key">
-                  ADMIN KEY
-                </label>
-                <input
-                  id="admin-key"
-                  className="sg-input sg-input--pink"
-                  type="password"
-                  value={adminKey}
-                  onChange={(event) => setAdminKey(event.target.value)}
-                  placeholder="Paste admin key..."
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+            <section className="sg-auth-copy">
+              <h2>AUTH-GATE</h2>
+              <p>Verifies the likely original K1 owner — not the thief.</p>
+              <p>Checks are session-bound and cannot unlock the dashboard without a K1-bound passkey.</p>
+              <p>Device checks are advisory only. PASSKEY + ENTER is required.</p>
+              <p>Chain checks stay backend-routed for security. Endpoint details never appear in the browser.</p>
+            </section>
 
-                <label className="sg-label" htmlFor="admin-k1">
-                  K1 ADDRESS
-                </label>
-                <input
-                  id="admin-k1"
-                  className="sg-input"
-                  value={adminK1}
-                  onChange={(event) => setAdminK1(event.target.value)}
-                  placeholder="Paste user's K1 address..."
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-
+            <section className="sg-card sg-card--warning sg-side-caution">
+              <div className="sg-caution-head">
+                <span>⚠</span>
+                <h2>CAUTION</h2>
                 <button
-                  id="admin-generate-passkey"
-                  className="sg-admin-generate"
+                  id="admin-black-circle"
+                  className="sg-admin-circle"
                   type="button"
-                  onClick={generateAdminPasskey}
+                  aria-label="Admin K1-bound passkey generator"
+                  onClick={() => setAdminPanelOpen((v) => !v)}
                 >
-                  GENERATE PASSKEY
+                  ⚫️-&apos;
+                </button>
+              </div>
+
+              <p>Use at your own risk. No K2 or K3 private key is ever entered.</p>
+
+              {adminPanelOpen && <AdminPanel />}
+            </section>
+
+            <div className="sg-rail-status">
+              <span>777G V1.0</span>
+              <span>{verifiedRoute === 'passkey' ? 'AUTHENTICATED' : 'SECURE'}</span>
+            </div>
+          </aside>
+        )}
+
+        {!dashboardUnlocked && (
+          <section className="sg-main sg-main--locked">
+            <div className="sg-locked-stage">
+              <div className="sg-genesis-header">
+                <p>GENESIS OWNER AUTHENTICATION</p>
+                <span className="sg-dashboard-locked-label">DASHBOARD LOCKED</span>
+              </div>
+
+              <div className="sg-scan-orb-wrap">
+                <button
+                  className="sg-scan-orb"
+                  type="button"
+                  disabled={deviceLocked}
+                  onClick={() => deviceAttempt('scan')}
+                >
+                  SCAN
+                </button>
+              </div>
+
+              <label className="sg-field sg-k1-field">
+                <span>K1 COMPROMISED WALLET ADDRESS</span>
+                <input
+                  value={k1Address}
+                  onChange={(e) => setK1Address(e.target.value)}
+                  placeholder="0x..."
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+
+              <div className="sg-auth-actions">
+                <button type="button" onClick={() => deviceAttempt('link')}>
+                  LINK DEVICE
                 </button>
 
-                {generatedPasskey && (
-                  <div className="sg-generated">
-                    <div>Generated K1-bound passkey</div>
-                    <code>{generatedPasskey}</code>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(generatedPasskey)}
-                    >
-                      COPY
-                    </button>
-                  </div>
-                )}
+                <label>
+                  <span>PASSKEY</span>
+                  <input
+                    value={passkey}
+                    onChange={(e) => setPasskey(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) verifyPasskey()
+                    }}
+                    placeholder="Enter K1-bound passkey..."
+                    type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </label>
 
-                <div className="sg-admin-status" aria-live="polite">
-                  {adminStatus}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <div className="sg-auth-msg" aria-live="polite">
-            {authMsg}
-          </div>
-
-          <div className="sg-rail-bottom">
-            <span className={dashboardUnlocked ? 'sg-dot sg-dot--on' : 'sg-dot'} />
-            777G v1.0 · {dashboardUnlocked ? 'AUTHENTICATED' : 'SECURE'}
-          </div>
-        </aside>
-
-        <main className={`sg-main ${dashboardUnlocked ? 'sg-main--unlocked' : 'sg-main--locked'}`}>
-          {!dashboardUnlocked ? (
-            <section className="sg-locked-stage" aria-label="Locked dashboard view">
-              <div className="sg-genesis-header">
-                <h2>GENESIS OWNER AUTHENTICATION</h2>
-                <div className="sg-dashboard-locked-label">DASHBOARD LOCKED</div>
+                <button type="button" onClick={verifyPasskey}>
+                  PASSKEY + ENTER
+                </button>
               </div>
 
-              <section className="sg-standalone sg-card sg-card--cyan">
-                <h1>STANDALONE OPERATION</h1>
+              {authMsg && <p className="sg-status-line">{authMsg}</p>}
+
+              <section className="sg-card sg-card--cyan sg-standalone">
+                <h2>STANDALONE OPERATION</h2>
                 <p>This dashboard executes the authentication flow client-side.</p>
                 <p>You are not submitting K1 authentication data to any operator, server, or third party.</p>
                 <p>Cryptographic checks run in your browser.</p>
-                <p>Chain checks stay backend-routed for security.</p>
-                <p>Endpoint details never appear in the browser.</p>
+                <p>Chain checks stay backend-routed for security. Endpoint details never appear in the browser.</p>
               </section>
 
-              <section className="sg-warning sg-card sg-card--warning">
-                <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
-                <p>PLUS, YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
+              <section className="sg-card sg-card--warning sg-warning">
+                <div className="sg-caution-head">
+                  <span>⚠</span>
+                  <h2>CAUTION</h2>
+                  <button
+                    id="admin-black-circle"
+                    className="sg-admin-circle"
+                    type="button"
+                    aria-label="Admin K1-bound passkey generator"
+                    onClick={() => setAdminPanelOpen((v) => !v)}
+                  >
+                    ⚫️-&apos;
+                  </button>
+                </div>
+
+                <p>Use at your own risk. K2 authorizes only. K3 is the immutable clean drop destination.</p>
+
+                {adminPanelOpen && <AdminPanel />}
               </section>
-            </section>
-          ) : (
-            <section className="sg-workspace-stage" aria-label="Unlocked EIP-777G dashboard">
-              <nav className="sg-tabs sg-tabs--dashboard" aria-label="Dashboard sections">
-                <button
-                  type="button"
-                  className={dashboardTab === 'deployment' ? 'active' : ''}
-                  onClick={() => setDashboardTab('deployment')}
-                >
-                  Deployment
-                </button>
-                <button
-                  type="button"
-                  className={dashboardTab === 'protection' ? 'active' : ''}
-                  onClick={() => setDashboardTab('protection')}
-                >
-                  Protection
-                </button>
-                <button
-                  type="button"
-                  className={dashboardTab === 'status' ? 'active' : ''}
-                  onClick={() => setDashboardTab('status')}
-                >
-                  Status
-                </button>
-              </nav>
+            </div>
+          </section>
+        )}
 
-              {dashboardTab === 'deployment' && (
-                <>
-                  <section id="deployment-panel" className="sg-dash-card sg-deployment-card">
-                    <h1>EIP-777G DEPLOYMENT</h1>
-                    <div className="sg-deploy-intro">
-                      <p>
-                        Create &amp; fund a burner wallet for your deployment bundle — this is your{' '}
-                        <strong>Deployer.</strong> Enter the Deployer key and address in the assigned boxes below.
-                      </p>
-                      <p>
-                        Enter the K1 key assigned to the K1 address listed. Enter two clean public addresses in K2 and K3.{' '}
-                        <strong>Do not at any point share your K2 or K3 keys.</strong>
-                      </p>
-                    </div>
+        {dashboardUnlocked && (
+          <section className="sg-main sg-main--unlocked">
+            <nav className="sg-tabs" aria-label="Dashboard tabs">
+              <button
+                className={`sg-tab ${dashboardTab === 'deployment' ? 'sg-tab--active' : ''}`}
+                type="button"
+                onClick={() => setDashboardTab('deployment')}
+              >
+                Deployment
+              </button>
+              <button
+                className={`sg-tab ${dashboardTab === 'protection' ? 'sg-tab--active' : ''}`}
+                type="button"
+                onClick={() => setDashboardTab('protection')}
+              >
+                Protection
+              </button>
+              <button
+                className={`sg-tab ${dashboardTab === 'status' ? 'sg-tab--active' : ''}`}
+                type="button"
+                onClick={() => setDashboardTab('status')}
+              >
+                Status
+              </button>
+            </nav>
 
-                    <ol className="sg-deploy-steps">
-                      <li>
-                        <span>1</span>
-                        <p>Choose the initial chain to launch the EIP-777G contract on.</p>
-                      </li>
-                      <li>
-                        <span>2</span>
-                        <p>
-                          The fee calculator next to the chain selection box will tell you the funding needed to launch
-                          the contract on that chain.
-                        </p>
-                      </li>
-                      <li>
-                        <span>3</span>
-                        <p>Fund the Deployer, then build and sign the deployment transaction locally.</p>
-                      </li>
-                      <li>
-                        <span>4</span>
-                        <p>The progress bar indicates the deployment bundle and protection checks.</p>
-                      </li>
-                      <li>
-                        <span>5</span>
-                        <p>
-                          Once EIP-777G has been deployed, K2 authorizes protected actions and permitted transfer flow
-                          routes to the K3 clean drop address.
-                        </p>
-                      </li>
-                    </ol>
-                  </section>
+            {dashboardTab === 'deployment' && (
+              <section className="sg-dashboard-grid">
+                <article className="sg-card sg-card--cyan sg-dash-card sg-deploy-intro">
+                  <h1>EIP-777G DEPLOYMENT</h1>
+                  <p>
+                    Create and fund a deployment bundle. K1 is session-bound, K2 is a public auth
+                    address, and K3 is the clean drop destination. Do not enter K2 or K3 private keys.
+                  </p>
 
-                  <section className="sg-dash-card sg-bundle-card">
-                    <h2>DEPLOYMENT BUNDLE</h2>
+                  <ol className="sg-deploy-steps">
+                    <li>Choose the initial chain to launch the EIP-777G contract on.</li>
+                    <li>Calculate the funding needed for the deployment bundle.</li>
+                    <li>Prepare the signed transaction locally. Backend receives signedTx only.</li>
+                    <li>Lock gate in and verify protection.</li>
+                    <li>K2 authorizes only; authorized transfer routes to K3 clean address.</li>
+                  </ol>
+                </article>
 
-                    <div className="sg-form-grid sg-form-grid--deploy">
-                      <label>
-                        <span>DEPLOYER ADDRESS</span>
-                        <input
-                          className="sg-input"
-                          value={deployerAddress}
-                          onChange={(event) => setDeployerAddress(event.target.value)}
-                          placeholder="0x..."
-                          autoComplete="off"
-                          spellCheck={false}
-                        />
-                      </label>
+                <article className="sg-card sg-dash-card sg-deploy-bundle">
+                  <h2>DEPLOYMENT BUNDLE</h2>
 
-                      <label>
-                        <span>DEPLOYER KEY</span>
-                        <input
-                          className="sg-input"
-                          type="password"
-                          value={deployerKey}
-                          onChange={(event) => setDeployerKey(event.target.value)}
-                          placeholder="0x..."
-                          autoComplete="off"
-                          spellCheck={false}
-                        />
-                      </label>
-
-                      <label>
-                        <span>K1 ADDRESS</span>
-                        <input
-                          className="sg-input sg-input--active"
-                          value={k1Address}
-                          readOnly
-                        />
-                      </label>
-
-                      <label>
-                        <span>K1 KEY</span>
-                        <input
-                          className="sg-input"
-                          type="password"
-                          value={k1SessionKey}
-                          onChange={(event) => setK1SessionKey(event.target.value)}
-                          placeholder="session-only"
-                          autoComplete="off"
-                          spellCheck={false}
-                        />
-                      </label>
-
-                      <label className="sg-form-wide">
-                        <span>K2 AUTH ADDRESS</span>
-                        <input
-                          className="sg-input"
-                          value={k2Address}
-                          onChange={(event) => setK2Address(event.target.value)}
-                          placeholder="0x..."
-                          autoComplete="off"
-                          spellCheck={false}
-                        />
-                      </label>
-
-                      <label className="sg-form-wide">
-                        <span>K3 CLEAN DROP ADDRESS</span>
-                        <input
-                          className="sg-input sg-input--active"
-                          value={k3Address}
-                          onChange={(event) => setK3Address(event.target.value)}
-                          placeholder="0x..."
-                          autoComplete="off"
-                          spellCheck={false}
-                        />
-                      </label>
-
-                      <label className="sg-form-full">
-                        <span>SIGNED TX</span>
-                        <input
-                          className="sg-input"
-                          value={signedTx}
-                          onChange={(event) => setSignedTx(event.target.value)}
-                          placeholder="0x..."
-                          autoComplete="off"
-                          spellCheck={false}
-                        />
-                        <small>Backend receives signedTx only. No K2/K3 private keys. No seed. No mnemonic.</small>
-                      </label>
-                    </div>
-
-                    <div className="sg-bundle-actions">
-                      <select
-                        className="sg-input sg-chain-select"
-                        value={selectedChain}
-                        onChange={(event) => setSelectedChain(event.target.value)}
-                      >
-                        <option value="">EVM Bundle — All EVM Chains</option>
-                        {chains.map((chain) => (
-                          <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
-                            {chain.name} ({chain.nativeSymbol})
-                          </option>
-                        ))}
-                      </select>
-
-                      <button className="sg-cyan-action" type="button" onClick={calculateFunding}>
-                        CALCULATE FUNDING
-                      </button>
-
-                      <button className="sg-pink-action" type="button" onClick={lockGateIn}>
-                        LOCK GATE IN
-                      </button>
-                    </div>
-
-                    {(fundingStatus || deployStatus) && (
-                      <div className="sg-live-status" aria-live="polite">
-                        {fundingStatus && <p>{fundingStatus}</p>}
-                        {deployStatus && <p>{deployStatus}</p>}
-                      </div>
-                    )}
-                  </section>
-
-                  <div className="sg-progress-grid">
-                    <section className="sg-mini-card">
-                      <h2>DEPLOYMENT PROGRESS</h2>
-
-                      <div className="sg-progress-track">
-                        <div
-                          className="sg-progress-fill"
-                          style={{
-                            width:
-                              activeStep < 0
-                                ? '0%'
-                                : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`
-                          }}
-                        />
-                      </div>
-
-                      <div className="sg-progress-percent">
-                        {activeStep < 0
-                          ? '0%'
-                          : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`}
-                      </div>
-
-                      {PROGRESS_STEPS.map((step, index) => (
-                        <div className="sg-progress-line" key={step}>
-                          <span className={index <= activeStep ? 'on' : ''} />
-                          {step}
-                        </div>
-                      ))}
-                    </section>
-
-                    <section className="sg-mini-card">
-                      <h2>VERIFYING PROTECTION</h2>
-                      <p>Runs automatically after deployment.</p>
-                    </section>
-                  </div>
-
-                  <section className="sg-final-warning">
-                    <strong>&#9888;</strong>
-                    <p>
-                      All data auto-scrubs after verification and again at session end. SCRUB purges on demand.
-                      Standalone. Nothing is stored, logged, or transmitted from the browser.
-                    </p>
-                  </section>
-                </>
-              )}
-
-              {dashboardTab === 'protection' && (
-                <section id="protection-panel" className="sg-dash-card sg-protection-card">
-                  <h2>PROTECTION SETUP</h2>
-
-                  <div className="sg-protection-banner">
-                    <strong>For protection before compromise</strong> — configure EIP-777G protection here.
-                  </div>
-
-                  <div className="sg-form-grid sg-form-grid--protect">
+                  <div className="sg-form-grid sg-form-grid--deploy">
                     <label>
-                      <span>K1 ADDRESS <em>AUTO-FILLED</em></span>
+                      <span>DEPLOYER ADDRESS</span>
                       <input
-                        className="sg-input sg-input--active"
-                        value={k1Address}
-                        readOnly
+                        value={deployerAddress}
+                        onChange={(e) => setDeployerAddress(e.target.value)}
+                        placeholder="0x..."
+                        autoComplete="off"
+                        spellCheck={false}
                       />
                     </label>
 
                     <label>
-                      <span>K2 AUTH ADDRESS</span>
+                      <span>DEPLOYER KEY / SESSION ONLY</span>
                       <input
-                        className="sg-input"
+                        value={deployerKey}
+                        onChange={(e) => setDeployerKey(e.target.value)}
+                        placeholder="0x..."
+                        type="password"
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+
+                    <label>
+                      <span>K1 COMPROMISED WALLET ADDRESS</span>
+                      <input value={k1Address} readOnly placeholder="0x..." />
+                    </label>
+
+                    <label>
+                      <span>K1 KEY / SESSION ONLY</span>
+                      <input
+                        value={k1SessionKey}
+                        onChange={(e) => setK1SessionKey(e.target.value)}
+                        placeholder="0x..."
+                        type="password"
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+
+                    <label>
+                      <span>K2 PUBLIC AUTH ADDRESS</span>
+                      <input
                         value={k2Address}
-                        onChange={(event) => setK2Address(event.target.value)}
+                        onChange={(e) => setK2Address(e.target.value)}
                         placeholder="0x..."
                         autoComplete="off"
                         spellCheck={false}
@@ -817,9 +596,38 @@ export default function App() {
                     <label>
                       <span>K3 CLEAN DROP ADDRESS</span>
                       <input
-                        className="sg-input"
                         value={k3Address}
-                        onChange={(event) => setK3Address(event.target.value)}
+                        onChange={(e) => setK3Address(e.target.value)}
+                        placeholder="0x..."
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+
+                    <label>
+                      <span>CHAIN</span>
+                      <select
+                        value={selectedChain}
+                        onChange={(e) => setSelectedChain(e.target.value)}
+                      >
+                        <option value="">— Select chain —</option>
+                        {chains.map((chain) => (
+                          <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
+                            {chain.name} — {chain.nativeSymbol}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <button type="button" onClick={calculateFunding}>
+                      CALCULATE FUNDING
+                    </button>
+
+                    <label className="sg-wide">
+                      <span>SIGNED TX / BACKEND RECEIVES THIS ONLY</span>
+                      <textarea
+                        value={signedTx}
+                        onChange={(e) => setSignedTx(e.target.value)}
                         placeholder="0x..."
                         autoComplete="off"
                         spellCheck={false}
@@ -827,100 +635,133 @@ export default function App() {
                     </label>
                   </div>
 
-                  <div className="sg-bundle-actions">
-                    <select
-                      className="sg-input sg-chain-select"
-                      value={selectedChain}
-                      onChange={(event) => setSelectedChain(event.target.value)}
-                    >
-                      <option value="">EVM Bundle — All EVM Chains</option>
-                      {chains.map((chain) => (
-                        <option key={chain.slug} value={chain.slug} disabled={!chain.deploySupported}>
-                          {chain.name} ({chain.nativeSymbol})
-                        </option>
+                  {fundingPanel && <p className="sg-status-line">{fundingPanel}</p>}
+
+                  <button className="sg-primary-action" type="button" onClick={lockGateIn}>
+                    LOCK GATE IN
+                  </button>
+
+                  {deployStatus && <p className="sg-status-line">{deployStatus}</p>}
+                </article>
+
+                <div className="sg-progress-grid">
+                  <article className="sg-card sg-dash-card">
+                    <h2>DEPLOYMENT PROGRESS</h2>
+                    <div className="sg-progress-bar">
+                      <span
+                        style={{
+                          width:
+                            activeStep < 0
+                              ? '0%'
+                              : `${Math.round(((activeStep + 1) / PROGRESS_STEPS.length) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <ul>
+                      {PROGRESS_STEPS.map((step, i) => (
+                        <li key={step} style={{ color: i <= activeStep ? 'var(--sg-cyan)' : undefined }}>
+                          {step}
+                        </li>
                       ))}
-                    </select>
+                    </ul>
+                  </article>
 
-                    <button className="sg-cyan-action" type="button" onClick={calculateFunding}>
-                      CALCULATE FUNDING
-                    </button>
+                  <article className="sg-card sg-dash-card">
+                    <h2>VERIFYING PROTECTION</h2>
+                    <p>Runs after deployment. Confirms backend-routed checks without exposing RPC endpoints.</p>
+                  </article>
+                </div>
+              </section>
+            )}
 
-                    <button className="sg-pink-action" type="button">
-                      AUTHORIZE PROTECTION
-                    </button>
-                  </div>
+            {dashboardTab === 'protection' && (
+              <section className="sg-card sg-card--cyan sg-dash-card sg-protection-setup">
+                <h1>PROTECTION SETUP</h1>
+                <p>
+                  Use K2 to authorize protection. K2 private key is never entered. K3 remains the clean
+                  drop destination.
+                </p>
 
-                  <div className="sg-protection-note">
-                    To activate: open K1 in your wallet and authorize the signature prompt. K2 and K3 are public
-                    addresses only. Do not enter K2 or K3 private keys.
-                  </div>
-                </section>
-              )}
+                <div className="sg-form-grid sg-form-grid--deploy">
+                  <label>
+                    <span>K1 ADDRESS AUTO-FILLED</span>
+                    <input value={k1Address} readOnly />
+                  </label>
 
-              {dashboardTab === 'status' && (
-                <section id="status-panel" className="sg-dash-card sg-status-card">
-                  <h2>STATUS</h2>
+                  <label>
+                    <span>K2 PUBLIC AUTH ADDRESS</span>
+                    <input
+                      value={k2Address}
+                      onChange={(e) => setK2Address(e.target.value)}
+                      placeholder="0x..."
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
 
-                  <div className="sg-status-row">
-                    <span className="on" />
-                    Auth-Gate route: {verifiedRoute}
-                  </div>
-                  <div className="sg-status-row">
-                    <span className="on" />
-                    Dashboard unlock: authGateVerified only
-                  </div>
-                  <div className="sg-status-row">
-                    <span className="on" />
-                    Backend deploy boundary: signedTx only
-                  </div>
-                  <div className="sg-status-row">
-                    <span className="on" />
-                    K2: public authorization address only
-                  </div>
-                  <div className="sg-status-row">
-                    <span className="on" />
-                    K3: immutable clean drop destination
-                  </div>
-                </section>
-              )}
-            </section>
-          )}
-        </main>
-      </div>
+                  <label>
+                    <span>K3 CLEAN DROP ADDRESS</span>
+                    <input
+                      value={k3Address}
+                      onChange={(e) => setK3Address(e.target.value)}
+                      placeholder="0x..."
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
+                </div>
 
-      <aside className="sg-footer sg-thankyou-float" aria-label="Thank you">
-        {dashboardUnlocked && (
+                <button className="sg-primary-action" type="button">
+                  AUTHORIZE PROTECTION
+                </button>
+              </section>
+            )}
+
+            {dashboardTab === 'status' && (
+              <section className="sg-card sg-dash-card sg-status-panel">
+                <h1>STATUS</h1>
+                <p>Auth-Gate route: {verifiedRoute}</p>
+                <p>Chain checks stay backend-routed for security.</p>
+                <p>Endpoint details never appear in the browser.</p>
+                <p>Thank-you routing is separate from K3.</p>
+              </section>
+            )}
+          </section>
+        )}
+      </section>
+
+      <aside className="sg-footer">
+        <button
+          className="sg-thankyou-button"
+          type="button"
+          disabled={!dashboardUnlocked}
+          onClick={() => dashboardUnlocked && setThanksOpen((v) => !v)}
+        >
+          THANK YOU
+        </button>
+
+        {thanksOpen && dashboardUnlocked && (
           <div className="sg-thanks-panel">
             <textarea
               value={thanksMessage}
-              onChange={(event) => setThanksMessage(event.target.value)}
+              onChange={(e) => setThanksMessage(e.target.value)}
               placeholder="Optional thank-you note"
               maxLength={280}
             />
             <button type="button" onClick={sendThanks}>
               SEND
             </button>
-            <div>{thanksStatus}</div>
+            {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
           </div>
         )}
 
-        <button
-          className="sg-thankyou-button"
-          type="button"
-          onClick={() => {
-            if (thanksAddress) navigator.clipboard?.writeText(thanksAddress)
-          }}
-        >
-          THANK YOU
-        </button>
-
-        <div className="sg-built">
-          BUILT BY EMP <span>✦</span>{' '}
+        <div>BUILT BY EMP</div>
+        <div>
           <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
             {thanksHandle}
           </a>
         </div>
       </aside>
-    </div>
+    </main>
   )
 }
