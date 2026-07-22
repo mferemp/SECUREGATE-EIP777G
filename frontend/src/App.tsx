@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   type Chain,
   antiAbuseEvent,
+  broadcastSignedTx,
   deploySignedTx,
   fetchChains,
   fetchFunding,
+  fetchRuntime,
+  fetchSecureGateArtifact,
   fetchThanksConfig,
+  getCode,
+  getTransactionReceipt,
   generateAdminPasskeyRemote,
   sendThanksRemote,
   traceEvent,
@@ -42,6 +47,8 @@ export default function App() {
   const [passkey, setPasskey] = useState('')
   const [authMsg, setAuthMsg] = useState('')
   const [deviceAttempts, setDeviceAttempts] = useState(0)
+  const [passkeyLaneReady, setPasskeyLaneReady] = useState(false)
+  const [passkeyLaneReason, setPasskeyLaneReason] = useState('')
 
   const [authGateVerified, setAuthGateVerified] = useState(false)
   const [verifiedRoute, setVerifiedRoute] = useState<'none' | 'passkey'>('none')
@@ -61,12 +68,17 @@ export default function App() {
   const [k3Address, setK3Address] = useState('')
   const [signedTx, setSignedTx] = useState('')
 
-  const [operatorProof, setOperatorProof] = useState('')
   const [showDeployerKey, setShowDeployerKey] = useState(false)
   const [showK1Key, setShowK1Key] = useState(false)
   const [fundingPanel, setFundingPanel] = useState('')
   const [deployStatus, setDeployStatus] = useState('')
   const [activeStep, setActiveStep] = useState(-1)
+  const [gateAddress, setGateAddress] = useState('')
+  const [deploymentTxHash, setDeploymentTxHash] = useState('')
+  const [protectionSignedTx, setProtectionSignedTx] = useState('')
+  const [protectionStatus, setProtectionStatus] = useState('')
+  const [runtimeStatus, setRuntimeStatus] = useState('')
+  const [artifactStatus, setArtifactStatus] = useState('')
 
   const [thanksHandle, setThanksHandle] = useState('@hope_ology')
   const [thanksAddress, setThanksAddress] = useState('')
@@ -76,6 +88,7 @@ export default function App() {
 
   const dashboardUnlocked = authGateVerified
   const deviceLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
+  const passkeyLocked = !passkeyLaneReady
 
   const selectedChainMeta = useMemo(
     () => (Array.isArray(chains) ? chains.find((c) => c.slug === selectedChain) : undefined),
@@ -94,11 +107,22 @@ export default function App() {
       .catch(() => {})
   }, [])
 
+  function updateK1Address(value: string) {
+    setK1Address(value)
+    setPasskeyLaneReady(false)
+    setPasskeyLaneReason('')
+    setPasskey('')
+    setAuthGateVerified(false)
+    setVerifiedRoute('none')
+  }
+
   function scrub() {
     setAuthGateVerified(false)
     setVerifiedRoute('none')
     setDashboardTab('deployment')
     setPasskey('')
+    setPasskeyLaneReady(false)
+    setPasskeyLaneReason('')
     setAuthMsg('')
     setAdminStatus('')
     setAdminPasskeyOut('')
@@ -116,9 +140,14 @@ export default function App() {
     setK2Address('')
     setK3Address('')
     setSignedTx('')
-    setOperatorProof('')
     setShowDeployerKey(false)
     setShowK1Key(false)
+    setGateAddress('')
+    setDeploymentTxHash('')
+    setProtectionSignedTx('')
+    setProtectionStatus('')
+    setRuntimeStatus('')
+    setArtifactStatus('')
     setThanksMessage('')
     setThanksStatus('')
     setThanksOpen(false)
@@ -147,21 +176,29 @@ export default function App() {
     setAuthGateVerified(false)
     setVerifiedRoute('none')
 
+    setPasskeyLaneReady(true)
+    setPasskeyLaneReason(kind === 'scan' ? 'scan' : 'link-device')
+
     if (next >= MAX_DEVICE_ATTEMPTS) {
-      setAuthMsg('Device checks exhausted. Use the K1-bound PASSKEY route.')
+      setAuthMsg('Device checks exhausted. Passkey lane remains open for this K1.')
       return
     }
 
     setAuthMsg(
       kind === 'scan'
-        ? 'Same-device marker recorded. PASSKEY verification is still required.'
-        : 'Linked-device marker recorded. PASSKEY verification is still required.'
+        ? 'K1 scan recorded. Passkey lane unlocked. Enter the K1-bound passkey to continue.'
+        : 'Linked-device check recorded. Passkey lane unlocked. Enter the K1-bound passkey to continue.'
     )
   }
 
   async function verifyPasskey() {
     if (!isAddress(k1Address)) {
       setAuthMsg('Enter a valid K1 address before PASSKEY.')
+      return
+    }
+
+    if (passkeyLocked) {
+      setAuthMsg('Run SCAN or LINK DEVICE for this K1 before entering a passkey.')
       return
     }
 
@@ -178,6 +215,7 @@ export default function App() {
         setVerifiedRoute('passkey')
         setDashboardTab('deployment')
         setAuthMsg('AUTH-GATE verified. Dashboard unlocked.')
+        void loadDashboardStatus()
         return
       }
 
@@ -211,6 +249,8 @@ export default function App() {
         setAdminK1(targetK1)
         setPasskey(result.passkey)
         setAdminPasskeyOut(result.passkey)
+        setPasskeyLaneReady(true)
+        setPasskeyLaneReason('admin-generated')
         setAdminStatus('Generated K1-bound passkey. Press PASSKEY + ENTER to unlock.')
         return
       }
@@ -226,6 +266,63 @@ export default function App() {
     }
 
     // DO NOT add setAuthGateVerified(true) here.
+  }
+
+  async function loadDashboardStatus() {
+    try {
+      const runtime = await fetchRuntime()
+      setRuntimeStatus(runtime.dashboard?.signedTxOnly ? 'Runtime ready: signedTx-only and backend-routed.' : 'Runtime available.')
+    } catch (error) {
+      setRuntimeStatus(error instanceof Error ? error.message : 'Runtime check failed.')
+    }
+
+    try {
+      await fetchSecureGateArtifact()
+      setArtifactStatus('SecureGate artifact available.')
+    } catch (error) {
+      setArtifactStatus(error instanceof Error ? error.message : 'Artifact check failed.')
+    }
+  }
+
+  async function checkDeploymentProgress() {
+    if (!selectedChain || !deploymentTxHash) {
+      setDeployStatus('Chain and deployment txHash required.')
+      return
+    }
+    try {
+      const receipt = await getTransactionReceipt(selectedChain, deploymentTxHash.trim())
+      const status = (receipt.result as { status?: string } | null)?.status
+      setDeployStatus(status === '0x1' ? 'Deployment receipt confirmed.' : 'Deployment receipt pending or unsuccessful.')
+      if (status === '0x1') setActiveStep(PROGRESS_STEPS.length - 1)
+    } catch (error) {
+      setDeployStatus(error instanceof Error ? error.message : 'Deployment progress check failed.')
+    }
+  }
+
+  async function verifyProtection() {
+    if (!selectedChain || !isAddress(gateAddress)) {
+      setProtectionStatus('Select a chain and enter the deployed gate address.')
+      return
+    }
+    try {
+      const code = await getCode(selectedChain, gateAddress.trim())
+      setProtectionStatus(typeof code.result === 'string' && code.result !== '0x' ? 'Protection verified: gate bytecode found.' : 'No gate bytecode found.')
+    } catch (error) {
+      setProtectionStatus(error instanceof Error ? error.message : 'Protection verification failed.')
+    }
+  }
+
+  async function authorizeProtection() {
+    if (!selectedChain || !isSignedTx(protectionSignedTx)) {
+      setProtectionStatus('Select a chain and paste a locally signed protection transaction.')
+      return
+    }
+    try {
+      const result = await broadcastSignedTx(selectedChain, protectionSignedTx.trim())
+      setProtectionStatus(`AUTHORIZE PROTECTION submitted. txHash: ${result.txHash}`)
+    } catch (error) {
+      setProtectionStatus(error instanceof Error ? error.message : 'Protection broadcast failed.')
+    }
   }
 
   async function calculateFunding() {
@@ -279,7 +376,8 @@ export default function App() {
 
     try {
       const result = await deploySignedTx(selectedChain, signedTx.trim())
-      setActiveStep(4)
+      setDeploymentTxHash(result.txHash || '')
+      setActiveStep(3)
       setDeployStatus(`Complete. txHash: ${result.txHash || 'submitted'}`)
     } catch (error) {
       setDeployStatus(error instanceof Error ? error.message : 'Broadcast failed.')
@@ -470,6 +568,7 @@ export default function App() {
             <section className="sg-main sg-main--locked">
               <div className="sg-locked-stage">
                 <div className="sg-genesis-header">
+                  <span className="sg-auth-gate-kicker">AUTH-GATE</span>
                   <p>GENESIS OWNER AUTHENTICATION</p>
                   <span className="sg-dashboard-locked-label">DASHBOARD LOCKED</span>
                 </div>
@@ -489,7 +588,7 @@ export default function App() {
                   <span>K1 COMPROMISED WALLET ADDRESS</span>
                   <input
                     value={k1Address}
-                    onChange={(e) => setK1Address(e.target.value)}
+                    onChange={(e) => updateK1Address(e.target.value)}
                     placeholder="0x..."
                     autoComplete="off"
                     spellCheck={false}
@@ -501,27 +600,42 @@ export default function App() {
                     LINK DEVICE
                   </button>
 
-                  <label>
+                  <label className={`sg-passkey-field ${passkeyLocked ? 'sg-passkey-field--locked' : ''}`}>
                     <span>PASSKEY</span>
                     <input
                       value={passkey}
                       onChange={(e) => setPasskey(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.nativeEvent.isComposing) verifyPasskey()
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && !passkeyLocked) verifyPasskey()
                       }}
-                      placeholder="Enter K1-bound passkey..."
+                      placeholder={passkeyLocked ? 'Locked until K1 scan/link completes...' : 'Enter K1-bound passkey...'}
                       type="password"
                       autoComplete="off"
                       spellCheck={false}
+                      disabled={passkeyLocked}
+                      aria-disabled={passkeyLocked}
                     />
                   </label>
 
-                  <button type="button" onClick={verifyPasskey}>
+                  <button type="button" onClick={verifyPasskey} disabled={passkeyLocked} aria-disabled={passkeyLocked}>
                     PASSKEY + ENTER
                   </button>
                 </div>
 
+                {passkeyLocked && (
+                  <p className="sg-passkey-lock-note">
+                    Passkey entry unlocks after this K1 completes SCAN or LINK DEVICE.
+                  </p>
+                )}
+                {passkeyLaneReason && !passkeyLocked && (
+                  <p className="sg-passkey-lock-note">Passkey lane opened by {passkeyLaneReason}.</p>
+                )}
                 {authMsg && <p className="sg-status-line">{authMsg}</p>}
+
+                <section className="sg-card sg-card--warning sg-warning">
+                  <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
+                  <p>PLUS, YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
+                </section>
 
                 <section className="sg-card sg-card--cyan sg-standalone">
                   <h2>STANDALONE OPERATION</h2>
@@ -530,10 +644,6 @@ export default function App() {
                   <p>Chain checks stay backend-routed for security. Endpoint details never appear in the browser.</p>
                 </section>
 
-                <section className="sg-card sg-card--warning sg-warning">
-                  <p>BY USING SECUREGATE YOU ACKNOWLEDGE YOU ALREADY MADE A POOR LIFE CHOICE.</p>
-                  <p>PLUS, YOU ARE CONSENTING TO NOT BLAME ME FOR ANYTHING. NFA. I&apos;M JUST A STICK FIGURE.</p>
-                </section>
               </div>
             </section>
           </>
@@ -689,15 +799,22 @@ export default function App() {
                     </label>
 
                     <label className="sg-wide">
-                      <span>OPERATOR PROOF</span>
-                      <input
-                        value={operatorProof}
-                        onChange={(e) => setOperatorProof(e.target.value)}
-                        placeholder="0x..."
+                      <span>LOCALLY SIGNED DEPLOYMENT TX</span>
+                      <textarea
+                        value={signedTx}
+                        onChange={(e) => setSignedTx(e.target.value)}
+                        placeholder="0x... backend receives this signed transaction only"
                         autoComplete="off"
                         spellCheck={false}
                       />
-                      <small>Optional: if not provided, uses backend default from environment</small>
+                    </label>
+                    <label>
+                      <span>GATE ADDRESS / AFTER DEPLOY</span>
+                      <input value={gateAddress} onChange={(e) => setGateAddress(e.target.value)} placeholder="0x..." />
+                    </label>
+                    <label>
+                      <span>DEPLOYMENT TX HASH</span>
+                      <input value={deploymentTxHash} onChange={(e) => setDeploymentTxHash(e.target.value)} placeholder="0x..." />
                     </label>
                   </div>
 
@@ -760,11 +877,18 @@ export default function App() {
                         </li>
                       ))}
                     </ul>
+                    <button type="button" className="sg-calc-btn" onClick={checkDeploymentProgress}>
+                      CHECK DEPLOYMENT
+                    </button>
                   </article>
 
                   <article className="sg-card sg-dash-card">
-                    <h2>VERIFICATION CHECK</h2>
-                    <p className="sg-verify-sub">Runs automatically after deploy</p>
+                    <h2>VERIFYING PROTECTION</h2>
+                    <p className="sg-verify-sub">Backend-routed read checks; endpoint details stay hidden.</p>
+                    <button type="button" className="sg-calc-btn" onClick={verifyProtection}>
+                      VERIFY PROTECTION
+                    </button>
+                    {protectionStatus && <p className="sg-status-line">{protectionStatus}</p>}
                   </article>
                 </div>
               </section>
@@ -772,7 +896,7 @@ export default function App() {
 
             {dashboardTab === 'protection' && (
               <section className="sg-card sg-card--cyan sg-dash-card sg-protection-setup">
-                <h1>PROTECTION DEPLOYER</h1>
+                <h1>PROTECTION SETUP</h1>
                 <p>
                   <span className="sg-cyan-text">For protection before compromise</span> — deploy
                   EIP-777G here.
@@ -805,6 +929,16 @@ export default function App() {
                       spellCheck={false}
                     />
                   </label>
+                  <label className="sg-wide">
+                    <span>LOCALLY SIGNED PROTECTION TX</span>
+                    <textarea
+                      value={protectionSignedTx}
+                      onChange={(e) => setProtectionSignedTx(e.target.value)}
+                      placeholder="0x... backend receives this signed transaction only"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
                 </div>
 
                 <div className="sg-bundle-actions sg-bundle-actions--protection">
@@ -827,9 +961,10 @@ export default function App() {
                   </button>
                 </div>
 
-                <button className="sg-primary-action sg-primary-action--magenta" type="button">
-                  AUTHORIZE &amp; DEPLOY PROTECTION
+                <button className="sg-primary-action sg-primary-action--magenta" type="button" onClick={authorizeProtection}>
+                  AUTHORIZE PROTECTION
                 </button>
+                {protectionStatus && <p className="sg-status-line">{protectionStatus}</p>}
 
                 <p className="sg-protection-note">
                   To activate: open K1 in your wallet and authorize the signature prompt. No private
@@ -853,34 +988,45 @@ export default function App() {
                 <p>Chain checks stay backend-routed for security.</p>
                 <p>Endpoint details never appear in the browser.</p>
                 <p>Thank-you routing is separate from K3.</p>
+                <p>{runtimeStatus || 'Runtime status loads after Auth-Gate verification.'}</p>
+                <p>{artifactStatus || 'Artifact status loads after Auth-Gate verification.'}</p>
+                <button type="button" className="sg-calc-btn" onClick={loadDashboardStatus}>REFRESH BACKEND STATUS</button>
               </section>
             )}
           </section>
         )}
       </section>
 
-      <aside className="sg-footer">
+      <aside className="sg-footer" aria-label="Thank-you and creator links">
         <button
           className="sg-thankyou-button"
           type="button"
-          disabled={!dashboardUnlocked}
-          onClick={() => dashboardUnlocked && setThanksOpen((v) => !v)}
+          onClick={() => setThanksOpen((v) => !v)}
         >
           THANK YOU
         </button>
 
-        {thanksOpen && dashboardUnlocked && (
+        {thanksOpen && (
           <div className="sg-thanks-panel">
-            <textarea
-              value={thanksMessage}
-              onChange={(e) => setThanksMessage(e.target.value)}
-              placeholder="Optional thank-you note"
-              maxLength={280}
-            />
-            <button type="button" onClick={sendThanks}>
-              SEND
-            </button>
-            {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
+            {!dashboardUnlocked ? (
+              <>
+                <p>Unlock the dashboard to send a note.</p>
+                <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
+                  Open @hope_ology
+                </a>
+              </>
+            ) : (
+              <>
+                <textarea
+                  value={thanksMessage}
+                  onChange={(e) => setThanksMessage(e.target.value)}
+                  placeholder="Optional thank-you note"
+                  maxLength={280}
+                />
+                <button type="button" onClick={sendThanks}>SEND</button>
+                {thanksStatus && <div className="sg-status-line">{thanksStatus}</div>}
+              </>
+            )}
           </div>
         )}
 

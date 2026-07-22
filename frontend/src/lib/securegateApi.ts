@@ -93,9 +93,48 @@ export function traceEvent(kind: string, subject: string): Promise<unknown> {
   }).catch(() => {})
 }
 
+export type RuntimeStatus = {
+  status?: string
+  ok?: boolean
+  service?: string
+  dashboard?: {
+    signedTxOnly?: boolean
+    backendRoutedRpc?: boolean
+    verifyingProtection?: boolean
+    protectionSetup?: boolean
+  }
+}
+
+export type RpcResponse<T = unknown> = { result?: T; error?: string }
+
+export function fetchRuntime(): Promise<RuntimeStatus> {
+  return request('runtime')
+}
+
+export function fetchHealth(): Promise<{ status?: string; ok?: boolean; service?: string }> {
+  return request('health')
+}
+
 export function fetchSecureGateArtifact(): Promise<unknown> {
   return request('artifact/securegate')
 }
+
+export function rpcProxy<T = unknown>(chain: string, method: string, params: unknown[] = []): Promise<RpcResponse<T>> {
+  return request(`rpc/${encodeURIComponent(chain)}`, {
+    method: 'POST',
+    body: JSON.stringify({ method, params }),
+  })
+}
+
+export function getTransactionReceipt(chain: string, txHash: string): Promise<RpcResponse<unknown>> {
+  return rpcProxy(chain, 'eth_getTransactionReceipt', [txHash])
+}
+
+export function getCode(chain: string, address: string): Promise<RpcResponse<string>> {
+  return rpcProxy<string>(chain, 'eth_getCode', [address, 'latest'])
+}
+
+export const broadcastSignedTx = deploySignedTx
 
 export function antiAbuseEvent(action: string, subject: string): Promise<unknown> {
   return request('anti-abuse/event', {

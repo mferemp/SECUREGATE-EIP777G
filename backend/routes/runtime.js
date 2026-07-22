@@ -19,6 +19,23 @@ router.get('/', (_req, res) => {
     nodeMajor: major,
     node24: major === 24,
     uptimeSec: Math.round(process.uptime()),
+    service: 'securegate-eip777g',
+    dashboard: {
+      deploymentBundle: true,
+      deploymentProgress: true,
+      verifyingProtection: true,
+      protectionSetup: true,
+      signedTxOnly: true,
+      backendRoutedRpc: true,
+      thankYouSeparateFromK3: true,
+    },
+    routes: {
+      chains: 'GET /api/chains',
+      funding: 'GET /api/funding/:chain',
+      rpc: 'POST /api/rpc/:chain (read-only allowlist)',
+      deploy: 'POST /api/deploy/:chain ({ signedTx } only)',
+      artifact: 'GET /api/artifact/securegate',
+    },
   });
 });
 
