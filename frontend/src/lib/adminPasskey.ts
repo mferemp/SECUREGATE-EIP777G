@@ -5,7 +5,7 @@
 // is never stored client-side. Honest reporting: if the backend has no admin key
 // configured, generation is reported disabled (no fake success).
 
-import { api } from './api'
+import { generateAdminPasskeyRemote as _generateAdminPasskeyRemote } from './securegateApi'
 
 export type AdminPasskeyResult = {
   generated: boolean
@@ -17,17 +17,12 @@ export type AdminPasskeyResult = {
 
 export async function generateAdminPasskeyRemote(adminKey: string, k1: string): Promise<AdminPasskeyResult> {
   try {
-    const r = await fetch(api('admin-passkey/generate'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ adminKey, k1 }),
-    })
-    const d = await r.json()
+    const d = await _generateAdminPasskeyRemote(adminKey, k1)
     return {
-      generated: d?.generated === true,
+      generated: !!d?.passkey,
       disabled: d?.disabled === true,
       passkey: d?.passkey,
-      k1: d?.k1,
+      k1,
       reason: d?.reason || d?.error,
     }
   } catch {

@@ -5,7 +5,7 @@
 // bucket + a low-entropy device marker) — never a raw fingerprint, key, or seed.
 // The backend (routes/trace.js) reduces the subject to an opaque trace key.
 
-import { api } from './api'
+import { traceEvent } from './securegateApi'
 
 // A low-entropy, non-identifying device marker: coarse platform + a per-session
 // random tag. It is NOT a fingerprint and cannot correlate a user across sessions.
@@ -28,13 +28,8 @@ export type BreadcrumbResult = {
 async function post(kind: 'ping' | 'download', k1: string): Promise<BreadcrumbResult> {
   try {
     const subject = `${(k1 || 'anon').toLowerCase()}|${deviceMarker()}`
-    const r = await fetch(api(`trace/${kind}`), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ subject }),
-    })
-    const d = await r.json()
-    return { ok: r.ok, repeatCount: Number(d?.repeatCount) || 0, flagged: d?.flagged === true }
+    await traceEvent(kind, subject)
+    return { ok: true, repeatCount: 0, flagged: false }
   } catch {
     return { ok: false, repeatCount: 0, flagged: false }
   }

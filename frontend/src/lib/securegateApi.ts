@@ -50,6 +50,17 @@ export async function fetchThanksConfig(): Promise<ThanksConfig> {
   return get<ThanksConfig>('thank-you/config')
 }
 
+// ── passkey register ──────────────────────────────────────────────────────────
+
+export type RegisterResult = {
+  registered?: boolean
+  error?: string
+}
+
+export async function registerPasskeyRemote(k1: string, passkey: string): Promise<RegisterResult> {
+  return post<RegisterResult>('passkeys/register', { k1, passkey })
+}
+
 // ── passkey verify ────────────────────────────────────────────────────────────
 
 export type VerifyResult = {

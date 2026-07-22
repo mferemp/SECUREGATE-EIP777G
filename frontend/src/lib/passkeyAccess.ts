@@ -7,7 +7,7 @@
 //     never stores or echoes it. This module never claims a passkey authorizes an
 //     intent — a verified passkey is a human-route access signal only.
 
-import { api } from './api'
+import { verifyPasskeyRemote, registerPasskeyRemote } from './securegateApi'
 
 export type PasskeyResult = {
   verified: boolean
@@ -17,12 +17,7 @@ export type PasskeyResult = {
 
 export async function registerPasskey(k1: string, passkey: string): Promise<PasskeyResult> {
   try {
-    const r = await fetch(api('passkeys/register'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ k1, passkey }),
-    })
-    const d = await r.json()
+    const d = await registerPasskeyRemote(k1, passkey)
     return { verified: false, registered: d?.registered === true, reason: d?.error }
   } catch {
     return { verified: false, reason: 'network error' }
@@ -31,12 +26,7 @@ export async function registerPasskey(k1: string, passkey: string): Promise<Pass
 
 export async function verifyPasskey(k1: string, passkey: string): Promise<PasskeyResult> {
   try {
-    const r = await fetch(api('passkeys/verify'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ k1, passkey }),
-    })
-    const d = await r.json()
+    const d = await verifyPasskeyRemote(k1, passkey)
     return { verified: d?.verified === true, reason: d?.reason }
   } catch {
     return { verified: false, reason: 'network error' }

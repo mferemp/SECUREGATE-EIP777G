@@ -6,7 +6,7 @@
 //     of any proof or execution logic.
 //   * Sending is honest-capability: disabled unless the backend has X configured.
 
-import { api } from './api.ts'
+import { fetchThanksConfig, sendThanksRemote } from './securegateApi'
 
 export type ThankYouConfig = {
   handle: string
@@ -22,11 +22,10 @@ export type ThankYouSendResult = {
 
 export async function fetchThankYouConfig(): Promise<ThankYouConfig> {
   try {
-    const r = await fetch(api('thank-you/config'))
-    const d = await r.json()
+    const d = await fetchThanksConfig()
     return {
       handle: d?.handle || '@hope_ology',
-      network: d?.network || 'EVM',
+      network: 'EVM',
       copyAddress: d?.copyAddress || '',
     }
   } catch {
@@ -36,12 +35,7 @@ export async function fetchThankYouConfig(): Promise<ThankYouConfig> {
 
 export async function sendThankYou(message: string): Promise<ThankYouSendResult> {
   try {
-    const r = await fetch(api('thank-you/send'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message }),
-    })
-    const d = await r.json()
+    const d = await sendThanksRemote(message)
     return { sent: d?.sent === true, disabled: d?.disabled === true, reason: d?.reason }
   } catch {
     return { sent: false, reason: 'network error' }

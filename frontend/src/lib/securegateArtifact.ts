@@ -13,6 +13,9 @@ export type { Artifact }
 export async function fetchArtifact(): Promise<Artifact> {
   let res: Response
   try {
+    // Use the base api() helper directly — this is a GET with strict shape validation
+    // that lives here rather than in securegateApi.ts because it depends on
+    // validateArtifactShape from securegateTxBuilder.
     res = await fetch(api('artifact/securegate'))
   } catch (e) {
     throw new Error('artifact route unreachable: ' + (e as Error).message)
@@ -24,10 +27,8 @@ export async function fetchArtifact(): Promise<Artifact> {
     throw new Error('artifact route returned malformed JSON')
   }
   if (!res.ok) {
-    // Honest surface of the backend's 503 reason (e.g. "SECUREGATE_BYTECODE_HEX not set").
     const reason = (body && (body.reason || body.error)) || `HTTP ${res.status}`
     throw new Error('artifact unavailable: ' + reason)
   }
-  // Strict shape validation (0x-hex bytecode, non-empty ABI array).
   return validateArtifactShape(body)
 }

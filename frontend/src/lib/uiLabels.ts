@@ -1,10 +1,9 @@
 // uiLabels.ts (S01) — single source of truth for user-facing copy.
 //
-// The dashboard is intentionally opaque about mechanics: users NEVER see the
-// forbidden operator vocabulary (the cancel-approval verb, bot, Flashbots, the
-// smoke-check word, RPC, mempool, or bundle), nor a raw RPC URL. Every user-facing
-// string flows through this module so the drift verifier can prove no forbidden
-// vocabulary leaks into the UI.
+// The dashboard is intentionally opaque about mechanics: users NEVER see
+// legacy blocked labels, raw RPC URLs, bundle or mempool terminology, or any
+// operator-internal vocabulary. Every user-facing string flows through this
+// module so the drift verifier can prove no blocked vocabulary leaks into the UI.
 
 // Progress labels — EXACTLY these five, in order. No other progress copy allowed.
 export const PROGRESS_LABELS = [
