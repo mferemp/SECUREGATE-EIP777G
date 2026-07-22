@@ -913,7 +913,7 @@ select:focus {
   z-index: 2147483647 !important;
   pointer-events: none !important;
   transform: translateZ(0);
-  contain: layout paint;
+  overflow: visible !important;
 }
 .sg-thankyou-button, .sg-twitter-link, .sg-footer a, .sg-thanks-panel { pointer-events: auto !important; }
 .sg-thankyou-button {
