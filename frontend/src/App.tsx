@@ -33,6 +33,8 @@ function isSignedTx(value: string): boolean {
 
 export default function App() {
   const [chains, setChains] = useState<Chain[]>([])
+  const setChainsSafe = (val: unknown) =>
+    setChains(Array.isArray(val) ? (val as Chain[]) : [])
   const [selectedChain, setSelectedChain] = useState('')
 
   const [k1Address, setK1Address] = useState('')
@@ -72,13 +74,13 @@ export default function App() {
   const deviceLocked = deviceAttempts >= MAX_DEVICE_ATTEMPTS
 
   const selectedChainMeta = useMemo(
-    () => chains.find((c) => c.slug === selectedChain),
+    () => (Array.isArray(chains) ? chains.find((c) => c.slug === selectedChain) : undefined),
     [chains, selectedChain]
   )
 
   useEffect(() => {
     fetchChains()
-      .then((data) => setChains(Array.isArray(data?.chains) ? data.chains : []))
+      .then((data) => setChainsSafe(data?.chains ?? data))
       .catch(() => setChains([]))
     fetchThanksConfig()
       .then((data) => {
