@@ -77,7 +77,9 @@ export default function App() {
   )
 
   useEffect(() => {
-    fetchChains().then(setChains).catch(() => setChains([]))
+    fetchChains()
+      .then((data) => setChains(Array.isArray(data?.chains) ? data.chains : []))
+      .catch(() => setChains([]))
     fetchThanksConfig()
       .then((data) => {
         if (data?.handle) setThanksHandle(data.handle)
@@ -755,7 +757,6 @@ export default function App() {
           </div>
         )}
 
-        <div>BUILT BY EMP</div>
         <div>
           <a href="https://x.com/hope_ology" target="_blank" rel="noopener noreferrer">
             {thanksHandle}

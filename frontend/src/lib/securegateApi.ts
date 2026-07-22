@@ -100,6 +100,16 @@ export function antiAbuseEvent(action: string, subject: string): Promise<unknown
   }).catch(() => {})
 }
 
+export function registerPasskeyRemote(
+  k1: string,
+  passkey: string
+): Promise<{ registered?: boolean; error?: string }> {
+  return request('passkeys/register', {
+    method: 'POST',
+    body: JSON.stringify({ k1, passkey }),
+  })
+}
+
 export function verifyPasskeyRemote(k1: string, passkey: string): Promise<VerifyPasskeyResult> {
   return request('passkeys/verify', {
     method: 'POST',
